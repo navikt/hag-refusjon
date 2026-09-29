@@ -1,12 +1,17 @@
 package no.nav.helsearbeidsgiver
 
+import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import no.nav.helsearbeidsgiver.helsesjekker.naisRoutes
+import no.nav.helsearbeidsgiver.utils.json.jsonConfig
+import no.nav.helsearbeidsgiver.vedtak.vedtakRoutes
 import org.slf4j.LoggerFactory
 
 fun main() {
@@ -19,10 +24,14 @@ fun main() {
 }
 
 fun Application.module() {
+    install(ContentNegotiation) {
+        json(jsonConfig)
+    }
     routing {
         naisRoutes()
         get("/hello") {
             call.respondText("Hello World!")
         }
+        vedtakRoutes()
     }
 }
