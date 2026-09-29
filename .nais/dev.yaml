@@ -38,6 +38,9 @@ spec:
     periodSeconds: 10
     timeout: 1
   accessPolicy:
+    inbound:
+      rules:
+        - application: sykepenger-im-lps-api
     outbound:
       rules:
         - application: logging
