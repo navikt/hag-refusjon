@@ -9,21 +9,29 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import no.nav.helsearbeidsgiver.Env.getPropertyOrNull
+import no.nav.helsearbeidsgiver.bucket.BucketStorage
+import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
 import no.nav.helsearbeidsgiver.helsesjekker.naisRoutes
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
+import no.nav.helsearbeidsgiver.utils.pipe.orDefault
 import no.nav.helsearbeidsgiver.vedtak.vedtakRoutes
 import org.slf4j.LoggerFactory
 
 fun main() {
     LoggerFactory.getLogger("App").info("Starter server...")
+    val bucketStorage =
+        BucketStorageImpl(
+            bucketName = getPropertyOrNull("GCP_BUCKET_NAME").orDefault { throw RuntimeException("GCP_BUCKET_NAME ikke satt") },
+        )
     embeddedServer(
         factory = Netty,
         port = 8080,
-        module = Application::module,
+        module = { module(bucketStorage) },
     ).start(wait = true)
 }
 
-fun Application.module() {
+fun Application.module(bucketStorage: BucketStorage) {
     install(ContentNegotiation) {
         json(jsonConfig)
     }
@@ -32,6 +40,6 @@ fun Application.module() {
         get("/hello") {
             call.respondText("Hello World!")
         }
-        vedtakRoutes()
+        vedtakRoutes(bucketStorage)
     }
 }

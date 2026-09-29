@@ -43,9 +43,15 @@ spec:
         - application: sykepenger-im-lps-api
     outbound:
       rules:
+        - application: helsearbeidsgiver-pdfgen
         - application: logging
           namespace: nais-system
   gcp:
     buckets:
       - name: helsearbeidsgiver-refusjon-dev
         #retentionPeriodDays: 1
+  env:
+    - name: GCP_BUCKET_NAME
+      value: helsearbeidsgiver-refusjon-dev
+    - name: PDFGEN_VEDTAK_URL
+      value: "http://helsearbeidsgiver-pdfgen/api/v1/genpdf/vedtak/vedtak"
