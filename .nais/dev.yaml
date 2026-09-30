@@ -50,8 +50,12 @@ spec:
     buckets:
       - name: helsearbeidsgiver-refusjon-dev
         #retentionPeriodDays: 1
+  kafka:
+    pool: nav-dev
   env:
     - name: GCP_BUCKET_NAME
       value: helsearbeidsgiver-refusjon-dev
+    - name: KAFKA_TOPIC_REFUSJON
+      value: helsearbeidsgiver.refusjon
     - name: PDFGEN_REFUSJON_URL
       value: "http://helsearbeidsgiver-pdfgen/api/v1/genpdf/refusjon/refusjon"
