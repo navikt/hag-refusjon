@@ -15,7 +15,7 @@ import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
 import no.nav.helsearbeidsgiver.helsesjekker.naisRoutes
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.pipe.orDefault
-import no.nav.helsearbeidsgiver.vedtak.vedtakRoutes
+import no.nav.helsearbeidsgiver.vedtak.refusjonRoutes
 import org.slf4j.LoggerFactory
 
 fun main() {
@@ -40,6 +40,6 @@ fun Application.module(bucketStorage: BucketStorage) {
         get("/hello") {
             call.respondText("Hello World!")
         }
-        vedtakRoutes(bucketStorage)
+        refusjonRoutes(bucketStorage)
     }
 }

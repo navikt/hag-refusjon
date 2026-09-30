@@ -8,16 +8,18 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
-import no.nav.helsearbeidsgiver.utils.genererVedtakPdf
+import no.nav.helsearbeidsgiver.utils.genererRefusjonPdf
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import no.nav.helsearbeidsgiver.utils.respondMedPDF
 import no.nav.helsearbeidsgiver.utils.toUuidOrNull
 import org.slf4j.LoggerFactory
 import java.util.UUID
 
-private val logger = LoggerFactory.getLogger("VedtakRoutes")
+private val logger = LoggerFactory.getLogger("RefusjonRoutes")
 
-fun Route.vedtakRoutes(bucketStorage: BucketStorage) {
+fun Route.refusjonRoutes(bucketStorage: BucketStorage) {
+
+    // midlertidlig mottak POST route fra LPS API (bytter til å motta direkte fra SAS i fremtiden)
     post("/arbeidstaker-vedtak") {
         val melding =
             try {
@@ -33,7 +35,7 @@ fun Route.vedtakRoutes(bucketStorage: BucketStorage) {
         val refusjonsutfallId = UUID.randomUUID()
 
         try {
-            val pdf = genererVedtakPdf(melding)
+            val pdf = genererRefusjonPdf(melding)
             bucketStorage.lagrePdf(refusjonsutfallId, pdf)
         } catch (e: Exception) {
             "Feil ved generering eller lagring av PDF for refusjonsutfall med refusjonsutfallId $refusjonsutfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
