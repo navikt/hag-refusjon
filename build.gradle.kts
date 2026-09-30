@@ -31,6 +31,7 @@ repositories {
 
 dependencies {
     val gcpStorageVersion: String by project
+    val kafkaVersion: String by project
     val ktorVersion: String by project
     val logbackEncoderVersion: String by project
     val logbackVersion: String by project
@@ -47,6 +48,7 @@ dependencies {
     implementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
     implementation("net.logstash.logback:logstash-logback-encoder:$logbackEncoderVersion")
     implementation("no.nav.helsearbeidsgiver:utils:$utilsVersion")
+    implementation("org.apache.kafka:kafka-clients:$kafkaVersion")
 
     val kotestVersion: String by project
     val mockkVersion: String by project

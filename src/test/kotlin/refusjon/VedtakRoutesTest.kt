@@ -1,6 +1,8 @@
 package no.nav.helsearbeidsgiver.vedtak
 
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.ktor.client.HttpClient
@@ -24,11 +26,19 @@ import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
+import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
+import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
+import no.nav.helsearbeidsgiver.kafka.mockProducer
 import no.nav.helsearbeidsgiver.module
 import no.nav.helsearbeidsgiver.utils.PdfgenHttpClient
+import no.nav.helsearbeidsgiver.utils.json.fromJson
+import no.nav.helsearbeidsgiver.utils.json.parseJson
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.toUuidOrNull
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
+import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 
 class VedtakRoutesTest :
@@ -39,10 +49,11 @@ class VedtakRoutesTest :
 
         test("POST /arbeidstaker-vedtak med gyldig melding genererer PDF, lagrer den i bucket og svarer med refusjonsutfallId") {
             val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
-                application { module(bucketStorage) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC)) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -55,14 +66,51 @@ class VedtakRoutesTest :
                 val refusjonsutfallId = response.bodyAsText().toUuidOrNull()
                 refusjonsutfallId shouldNotBe null
                 bucketStorage.pdfer[refusjonsutfallId] shouldBe pdfBytes
+
+                val sendt = mockProducer.history()
+                sendt shouldHaveSize 1
+                sendt.first().key() shouldBe "c62594af-f0b8-4fd1-88f2-07e1b15dd906"
+                sendt
+                    .first()
+                    .value()
+                    .parseJson()
+                    .fromJson(RefusjonUtfall.serializer()) shouldBe
+                    RefusjonUtfall(
+                        refusjonUtfallId = refusjonsutfallId!!,
+                        orgnr = Orgnr("896929119"),
+                        fom = LocalDate.of(2026, 7, 28),
+                        tom = LocalDate.of(2026, 8, 3),
+                        sykepengegrunnlag = 154999.92,
+                        utfallTilArbeidsgiver = Utfall.INNVILGELSE,
+                        fattetTidspunkt = LocalDateTime.parse("2026-08-05T13:03:25.166498222"),
+                    )
+            }
+        }
+
+        test("POST /arbeidstaker-vedtak svarer Internal Server Error når publisering til Kafka feiler") {
+            val mockProducer = mockProducer(autoComplete = false).apply { sendException = RuntimeException("kafka nede") }
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            testApplication {
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer, TEST_TOPIC)) }
+
+                val response =
+                    client.post("/arbeidstaker-vedtak") {
+                        contentType(ContentType.Application.Json)
+                        setBody(gyldigMelding(Fnr.genererGyldig().verdi))
+                    }
+
+                response.status shouldBe HttpStatusCode.InternalServerError
+                mockProducer.history().shouldBeEmpty()
             }
         }
 
         test("POST /arbeidstaker-vedtak med ugyldig melding svarer Bad Request") {
             val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
 
             testApplication {
-                application { module(bucketStorage) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC)) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -72,15 +120,17 @@ class VedtakRoutesTest :
 
                 response.status shouldBe HttpStatusCode.BadRequest
                 bucketStorage.pdfer.size shouldBe 0
+                mockProducer.history().shouldBeEmpty()
             }
         }
 
         test("POST /arbeidstaker-vedtak svarer Internal Server Error og lagrer ingenting når pdfgen feiler") {
             val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
             mockPdfgen(HttpStatusCode.InternalServerError, "Error".toByteArray())
 
             testApplication {
-                application { module(bucketStorage) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC)) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -90,6 +140,7 @@ class VedtakRoutesTest :
 
                 response.status shouldBe HttpStatusCode.InternalServerError
                 bucketStorage.pdfer.size shouldBe 0
+                mockProducer.history().shouldBeEmpty()
             }
         }
 
@@ -98,7 +149,7 @@ class VedtakRoutesTest :
             val bucketStorage = FakeBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
 
             testApplication {
-                application { module(bucketStorage) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer(), TEST_TOPIC)) }
 
                 val response = client.get("/refusjonsutfall/$refusjonsutfallId/pdf")
 
@@ -111,7 +162,7 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf svarer Not Found når PDF ikke finnes i bucket") {
             testApplication {
-                application { module(FakeBucketStorage()) }
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC)) }
 
                 val response = client.get("/refusjonsutfall/${UUID.randomUUID()}/pdf")
 
@@ -121,7 +172,7 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf med ugyldig refusjonsutfallId svarer Bad Request") {
             testApplication {
-                application { module(FakeBucketStorage()) }
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC)) }
 
                 val response = client.get("/refusjonsutfall/ikke-en-uuid/pdf")
 
