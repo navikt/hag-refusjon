@@ -53,5 +53,5 @@ spec:
   env:
     - name: GCP_BUCKET_NAME
       value: helsearbeidsgiver-refusjon-dev
-    - name: PDFGEN_VEDTAK_URL
+    - name: PDFGEN_REFUSJON_URL
       value: "http://helsearbeidsgiver-pdfgen/api/v1/genpdf/vedtak/vedtak"

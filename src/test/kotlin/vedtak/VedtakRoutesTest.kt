@@ -23,7 +23,7 @@ import io.ktor.utils.io.ByteReadChannel
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
-import no.nav.helsearbeidsgiver.bucket.MockBucketStorage
+import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
 import no.nav.helsearbeidsgiver.module
 import no.nav.helsearbeidsgiver.utils.PdfgenHttpClient
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
@@ -38,7 +38,7 @@ class VedtakRoutesTest :
         afterEach { unmockkAll() }
 
         test("POST /arbeidstaker-vedtak med gyldig melding genererer PDF, lagrer den i bucket og svarer med refusjonsutfallId") {
-            val bucketStorage = MockBucketStorage()
+            val bucketStorage = FakeBucketStorage()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
@@ -59,7 +59,7 @@ class VedtakRoutesTest :
         }
 
         test("POST /arbeidstaker-vedtak med ugyldig melding svarer Bad Request") {
-            val bucketStorage = MockBucketStorage()
+            val bucketStorage = FakeBucketStorage()
 
             testApplication {
                 application { module(bucketStorage) }
@@ -76,7 +76,7 @@ class VedtakRoutesTest :
         }
 
         test("POST /arbeidstaker-vedtak svarer Internal Server Error og lagrer ingenting når pdfgen feiler") {
-            val bucketStorage = MockBucketStorage()
+            val bucketStorage = FakeBucketStorage()
             mockPdfgen(HttpStatusCode.InternalServerError, "Error".toByteArray())
 
             testApplication {
@@ -95,7 +95,7 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf svarer med PDF fra bucket") {
             val refusjonsutfallId = UUID.randomUUID()
-            val bucketStorage = MockBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
+            val bucketStorage = FakeBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
 
             testApplication {
                 application { module(bucketStorage) }
@@ -111,7 +111,7 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf svarer Not Found når PDF ikke finnes i bucket") {
             testApplication {
-                application { module(MockBucketStorage()) }
+                application { module(FakeBucketStorage()) }
 
                 val response = client.get("/refusjonsutfall/${UUID.randomUUID()}/pdf")
 
@@ -121,7 +121,7 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf med ugyldig refusjonsutfallId svarer Bad Request") {
             testApplication {
-                application { module(MockBucketStorage()) }
+                application { module(FakeBucketStorage()) }
 
                 val response = client.get("/refusjonsutfall/ikke-en-uuid/pdf")
 
@@ -136,7 +136,7 @@ private fun mockPdfgen(
 ) {
     val mockEngine =
         MockEngine { request ->
-            request.url.toString() shouldBe PdfgenHttpClient.PDFGEN_VEDTAK_URL
+            request.url.toString() shouldBe PdfgenHttpClient.PDFGEN_REFUSJON_URL
 
             respond(
                 content = ByteReadChannel(content),

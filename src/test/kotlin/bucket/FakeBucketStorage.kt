@@ -2,7 +2,7 @@ package no.nav.helsearbeidsgiver.bucket
 
 import java.util.UUID
 
-class MockBucketStorage : BucketStorage {
+class FakeBucketStorage : BucketStorage {
     val pdfer = HashMap<UUID, ByteArray>()
 
     override fun lagrePdf(

@@ -61,6 +61,6 @@ dependencies {
 tasks {
     withType<Test> {
         useJUnitPlatform()
-        environment("PDFGEN_VEDTAK_URL", "http://fake-pdfgen/vedtak")
+        environment("PDFGEN_REFUSJON_URL", "http://fake-pdfgen/refusjon")
     }
 }

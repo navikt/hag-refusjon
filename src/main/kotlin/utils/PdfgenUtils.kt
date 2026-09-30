@@ -18,10 +18,10 @@ import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakMelding
 
 object PdfgenHttpClient {
     val httpClient = createHttpClient()
-    val PDFGEN_VEDTAK_URL = getPropertyOrNull("PDFGEN_VEDTAK_URL").orDefault { throw RuntimeException("PDFGEN_VEDTAK_URL ikke satt") }
+    val PDFGEN_REFUSJON_URL = getPropertyOrNull("PDFGEN_REFUSJON_URL").orDefault { throw RuntimeException("PDFGEN_REFUSJON_URL ikke satt") }
 }
 
-suspend fun genererVedtakPdf(vedtak: ArbeidstakerVedtakMelding) = hentPdf(vedtak, PdfgenHttpClient.PDFGEN_VEDTAK_URL)
+suspend fun genererVedtakPdf(vedtak: ArbeidstakerVedtakMelding) = hentPdf(vedtak, PdfgenHttpClient.PDFGEN_REFUSJON_URL)
 
 private suspend fun hentPdf(
     body: Any?,
