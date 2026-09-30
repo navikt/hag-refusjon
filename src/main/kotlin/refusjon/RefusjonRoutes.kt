@@ -8,6 +8,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
+import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.utils.genererRefusjonPdf
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import no.nav.helsearbeidsgiver.utils.respondMedPDF
@@ -17,7 +18,10 @@ import java.util.UUID
 
 private val logger = LoggerFactory.getLogger("RefusjonRoutes")
 
-fun Route.refusjonRoutes(bucketStorage: BucketStorage) {
+fun Route.refusjonRoutes(
+    bucketStorage: BucketStorage,
+    refusjonProducer: RefusjonProducer,
+) {
     // midlertidlig mottak POST route fra LPS API (bytter til å motta direkte fra SAS i fremtiden)
     post("/arbeidstaker-vedtak") {
         val melding =
@@ -31,13 +35,13 @@ fun Route.refusjonRoutes(bucketStorage: BucketStorage) {
 
         logger.info("Mottok arbeidstakervedtak for vedtaksperiodeId ${melding.vedtaksperiodeId}.")
 
-        val refusjonsutfallId = UUID.randomUUID()
+        val refusjonUtfallId = UUID.randomUUID()
 
         try {
             val pdf = genererRefusjonPdf(melding)
-            bucketStorage.lagrePdf(refusjonsutfallId, pdf)
+            bucketStorage.lagrePdf(refusjonUtfallId, pdf)
         } catch (e: Exception) {
-            "Feil ved generering eller lagring av PDF for refusjonsutfall med refusjonsutfallId $refusjonsutfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
+            "Feil ved generering eller lagring av PDF for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
                 .also {
                     logger.error(it)
                     sikkerLogger().error(it, e)
@@ -47,10 +51,26 @@ fun Route.refusjonRoutes(bucketStorage: BucketStorage) {
         }
 
         logger.info(
-            "Lagret PDF for refusjonsutfall med refusjonsutfallId $refusjonsutfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+            "Lagret PDF for refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
         )
 
-        call.respond(HttpStatusCode.OK, refusjonsutfallId.toString())
+        try {
+            refusjonProducer.send(melding.vedtaksperiodeId, melding.tilRefusjonUtfall(refusjonUtfallId))
+        } catch (e: Exception) {
+            "Feil ved publisering av refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
+                .also {
+                    logger.error(it)
+                    sikkerLogger().error(it, e)
+                }
+            call.respond(HttpStatusCode.InternalServerError, "Feil ved publisering av refusjonsutfall")
+            return@post
+        }
+
+        logger.info(
+            "Publiserte refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+        )
+
+        call.respond(HttpStatusCode.OK, refusjonUtfallId.toString())
     }
 
     get("/refusjonsutfall/{refusjonsutfallId}/pdf") {

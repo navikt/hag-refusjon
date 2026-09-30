@@ -7,12 +7,15 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
+import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
+import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
+import no.nav.helsearbeidsgiver.kafka.mockProducer
 
 class AppTest :
     FunSpec({
         test("GET /hello svarer med Hello World!") {
             testApplication {
-                application { module(FakeBucketStorage()) }
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC)) }
 
                 val response = client.get("/hello")
 
@@ -23,7 +26,7 @@ class AppTest :
 
         test("helsesjekker svarer OK") {
             testApplication {
-                application { module(FakeBucketStorage()) }
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC)) }
 
                 client.get("/health/is-alive").status shouldBe HttpStatusCode.OK
                 client.get("/health/is-ready").status shouldBe HttpStatusCode.OK

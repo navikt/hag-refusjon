@@ -1,4 +1,6 @@
 spec:
+  kafka:
+    pool: nav-dev
   gcp:
     buckets:
       - name: helsearbeidsgiver-refusjon-dev
