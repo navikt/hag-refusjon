@@ -18,7 +18,6 @@ import java.util.UUID
 private val logger = LoggerFactory.getLogger("RefusjonRoutes")
 
 fun Route.refusjonRoutes(bucketStorage: BucketStorage) {
-
     // midlertidlig mottak POST route fra LPS API (bytter til å motta direkte fra SAS i fremtiden)
     post("/arbeidstaker-vedtak") {
         val melding =
