@@ -1,0 +1,8 @@
+spec:
+  gcp:
+    buckets:
+      - name: helsearbeidsgiver-refusjon-dev
+        #retentionPeriodDays: 1
+  env:
+    - name: GCP_BUCKET_NAME
+      value: helsearbeidsgiver-refusjon-dev

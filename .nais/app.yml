@@ -7,7 +7,6 @@ metadata:
   name: refusjon
   namespace: helsearbeidsgiver
 spec:
-  image: {{image}}
   port: 8080
   replicas:
     max: 1
@@ -46,12 +45,6 @@ spec:
         - application: helsearbeidsgiver-pdfgen
         - application: logging
           namespace: nais-system
-  gcp:
-    buckets:
-      - name: helsearbeidsgiver-refusjon-dev
-        #retentionPeriodDays: 1
   env:
-    - name: GCP_BUCKET_NAME
-      value: helsearbeidsgiver-refusjon-dev
     - name: PDFGEN_REFUSJON_URL
       value: "http://helsearbeidsgiver-pdfgen/api/v1/genpdf/refusjon/refusjon"
