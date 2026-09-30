@@ -6,12 +6,13 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
+import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
 
 class AppTest :
     FunSpec({
         test("GET /hello svarer med Hello World!") {
             testApplication {
-                application { module() }
+                application { module(FakeBucketStorage()) }
 
                 val response = client.get("/hello")
 
@@ -22,7 +23,7 @@ class AppTest :
 
         test("helsesjekker svarer OK") {
             testApplication {
-                application { module() }
+                application { module(FakeBucketStorage()) }
 
                 client.get("/health/is-alive").status shouldBe HttpStatusCode.OK
                 client.get("/health/is-ready").status shouldBe HttpStatusCode.OK

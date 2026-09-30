@@ -30,12 +30,17 @@ repositories {
 }
 
 dependencies {
+    val gcpStorageVersion: String by project
     val ktorVersion: String by project
     val logbackEncoderVersion: String by project
     val logbackVersion: String by project
     val utilsVersion: String by project
 
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation("com.google.cloud:google-cloud-storage:$gcpStorageVersion")
+    implementation("io.ktor:ktor-client-apache5:$ktorVersion")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -44,14 +49,18 @@ dependencies {
     implementation("no.nav.helsearbeidsgiver:utils:$utilsVersion")
 
     val kotestVersion: String by project
+    val mockkVersion: String by project
     testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
     testImplementation("io.kotest:kotest-runner-junit5:$kotestVersion")
+    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
+    testImplementation("io.mockk:mockk:$mockkVersion")
     testImplementation(testFixtures("no.nav.helsearbeidsgiver:utils:$utilsVersion"))
 }
 
 tasks {
     withType<Test> {
         useJUnitPlatform()
+        environment("PDFGEN_REFUSJON_URL", "http://fake-pdfgen/refusjon")
     }
 }
