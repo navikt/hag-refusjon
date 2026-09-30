@@ -35,11 +35,14 @@ fun main() {
     embeddedServer(
         factory = Netty,
         port = 8080,
-        module = { module(bucketStorage) },
+        module = { module(bucketStorage, refusjonProducer) },
     ).start(wait = true)
 }
 
-fun Application.module(bucketStorage: BucketStorage) {
+fun Application.module(
+    bucketStorage: BucketStorage,
+    refusjonProducer: RefusjonProducer,
+) {
     install(ContentNegotiation) {
         json(jsonConfig)
     }
@@ -48,6 +51,6 @@ fun Application.module(bucketStorage: BucketStorage) {
         get("/hello") {
             call.respondText("Hello World!")
         }
-        refusjonRoutes(bucketStorage)
+        refusjonRoutes(bucketStorage, refusjonProducer)
     }
 }

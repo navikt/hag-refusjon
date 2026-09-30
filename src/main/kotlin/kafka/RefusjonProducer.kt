@@ -1,19 +1,24 @@
 package no.nav.helsearbeidsgiver.kafka
 
-import kotlinx.serialization.json.JsonElement
+import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.json.toPretty
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
+import no.nav.helsearbeidsgiver.vedtak.RefusjonUtfall
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
+import java.util.UUID
 
 class RefusjonProducer(
     private val kafkaProducer: Producer<String, String>,
     private val topic: String,
 ) {
     fun send(
-        key: String,
-        message: JsonElement,
+        vedtaksperiodeId: UUID,
+        refusjonUtfall: RefusjonUtfall,
     ) {
+        val key = vedtaksperiodeId.toString()
+        val message = refusjonUtfall.toJson(RefusjonUtfall.serializer())
+
         runCatching {
             kafkaProducer.send(ProducerRecord(topic, key, message.toString())).get()
         }.onSuccess {
