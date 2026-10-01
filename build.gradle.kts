@@ -61,6 +61,12 @@ dependencies {
 }
 
 tasks {
+    // `./gradlew build` kjører `assemble`, men lager ikke build/install/ (jar-filer og avhengigheter).
+    // Dockerfilen kopierer build/install/*/lib, så installDist må kjøre som en del av assemble.
+    assemble {
+        dependsOn(installDist)
+    }
+
     withType<Test> {
         useJUnitPlatform()
         environment("PDFGEN_REFUSJON_URL", "http://fake-pdfgen/refusjon")
