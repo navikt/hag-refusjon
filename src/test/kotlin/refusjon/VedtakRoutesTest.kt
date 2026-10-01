@@ -56,7 +56,7 @@ class VedtakRoutesTest :
                 application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC)) }
 
                 val response =
-                    client.post("/arbeidstaker-vedtak") {
+                    client.post("/arbeidstaker-vedta") {
                         contentType(ContentType.Application.Json)
                         setBody(gyldigMelding(Fnr.genererGyldig().verdi))
                     }
