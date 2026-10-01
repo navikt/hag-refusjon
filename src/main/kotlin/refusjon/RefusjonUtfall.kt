@@ -7,6 +7,7 @@ import kotlinx.serialization.UseSerializers
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateSerializer
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateTimeSerializer
 import no.nav.helsearbeidsgiver.utils.json.serializer.UuidSerializer
+import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -16,6 +17,7 @@ import java.util.UUID
 data class RefusjonUtfall(
     val refusjonUtfallId: UUID,
     val vedtaksperiodeId: UUID,
+    val fnr: Fnr,
     val orgnr: Orgnr,
     val fom: LocalDate,
     val tom: LocalDate,
@@ -37,6 +39,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(refusjonsutfallId: UUID): Refusj
     RefusjonUtfall(
         refusjonUtfallId = refusjonsutfallId,
         vedtaksperiodeId = vedtaksperiodeId,
+        fnr = foedselsnummer,
         orgnr = organisasjonsnummer,
         fom = fom,
         tom = tom,

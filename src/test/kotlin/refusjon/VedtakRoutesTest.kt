@@ -48,6 +48,7 @@ class VedtakRoutesTest :
         afterEach { unmockkAll() }
 
         test("POST /arbeidstaker-vedtak med gyldig melding genererer PDF, lagrer den i bucket og svarer med refusjonsutfallId") {
+            val fnr = Fnr.genererGyldig()
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
@@ -58,7 +59,7 @@ class VedtakRoutesTest :
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(Fnr.genererGyldig().verdi))
+                        setBody(gyldigMelding(fnr.verdi))
                     }
 
                 response.status shouldBe HttpStatusCode.OK
@@ -78,6 +79,7 @@ class VedtakRoutesTest :
                     RefusjonUtfall(
                         refusjonUtfallId = refusjonsutfallId!!,
                         vedtaksperiodeId = UUID.fromString("c62594af-f0b8-4fd1-88f2-07e1b15dd906"),
+                        fnr = fnr,
                         orgnr = Orgnr("896929119"),
                         fom = LocalDate.of(2026, 7, 28),
                         tom = LocalDate.of(2026, 8, 3),
