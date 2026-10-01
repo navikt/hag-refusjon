@@ -20,6 +20,7 @@ class RefusjonProducerTest :
         val refusjonUtfall =
             RefusjonUtfall(
                 refusjonUtfallId = UUID.randomUUID(),
+                vedtaksperiodeId = vedtaksperiodeId,
                 orgnr = Orgnr("896929119"),
                 fom = LocalDate.of(2026, 7, 28),
                 tom = LocalDate.of(2026, 8, 3),

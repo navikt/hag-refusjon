@@ -77,6 +77,7 @@ class VedtakRoutesTest :
                     .fromJson(RefusjonUtfall.serializer()) shouldBe
                     RefusjonUtfall(
                         refusjonUtfallId = refusjonsutfallId!!,
+                        vedtaksperiodeId = UUID.fromString("c62594af-f0b8-4fd1-88f2-07e1b15dd906"),
                         orgnr = Orgnr("896929119"),
                         fom = LocalDate.of(2026, 7, 28),
                         tom = LocalDate.of(2026, 8, 3),

@@ -15,6 +15,7 @@ import java.util.UUID
 @Serializable
 data class RefusjonUtfall(
     val refusjonUtfallId: UUID,
+    val vedtaksperiodeId: UUID,
     val orgnr: Orgnr,
     val fom: LocalDate,
     val tom: LocalDate,
@@ -35,6 +36,7 @@ enum class Utfall {
 fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(refusjonsutfallId: UUID): RefusjonUtfall =
     RefusjonUtfall(
         refusjonUtfallId = refusjonsutfallId,
+        vedtaksperiodeId = vedtaksperiodeId,
         orgnr = organisasjonsnummer,
         fom = fom,
         tom = tom,
