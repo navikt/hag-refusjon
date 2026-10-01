@@ -7,6 +7,8 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import no.nav.helsearbeidsgiver.utils.json.fromJson
 import no.nav.helsearbeidsgiver.utils.json.parseJson
+import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
+import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import no.nav.helsearbeidsgiver.vedtak.RefusjonUtfall
 import no.nav.helsearbeidsgiver.vedtak.Utfall
@@ -21,6 +23,7 @@ class RefusjonProducerTest :
             RefusjonUtfall(
                 refusjonUtfallId = UUID.randomUUID(),
                 vedtaksperiodeId = vedtaksperiodeId,
+                fnr = Fnr.genererGyldig(),
                 orgnr = Orgnr("896929119"),
                 fom = LocalDate.of(2026, 7, 28),
                 tom = LocalDate.of(2026, 8, 3),
