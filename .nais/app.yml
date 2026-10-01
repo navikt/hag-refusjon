@@ -7,7 +7,6 @@ metadata:
   name: refusjon
   namespace: helsearbeidsgiver
 spec:
-  image: {{image}}
   port: 8080
   replicas:
     max: 1
@@ -46,15 +45,7 @@ spec:
         - application: helsearbeidsgiver-pdfgen
         - application: logging
           namespace: nais-system
-  gcp:
-    buckets:
-      - name: helsearbeidsgiver-refusjon-dev
-        #retentionPeriodDays: 1
-  kafka:
-    pool: nav-dev
   env:
-    - name: GCP_BUCKET_NAME
-      value: helsearbeidsgiver-refusjon-dev
     - name: KAFKA_TOPIC_REFUSJON
       value: helsearbeidsgiver.refusjon
     - name: PDFGEN_REFUSJON_URL
