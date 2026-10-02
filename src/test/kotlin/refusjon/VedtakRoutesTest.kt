@@ -17,14 +17,19 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
 import io.ktor.utils.io.ByteReadChannel
+import io.mockk.coEvery
 import io.mockk.every
+import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
@@ -37,6 +42,7 @@ import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.toUuidOrNull
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
+import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
@@ -54,7 +60,7 @@ class VedtakRoutesTest :
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC)) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlient()) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -67,6 +73,7 @@ class VedtakRoutesTest :
                 val refusjonsutfallId = response.bodyAsText().toUuidOrNull()
                 refusjonsutfallId shouldNotBe null
                 bucketStorage.pdfer[refusjonsutfallId] shouldBe pdfBytes
+                pdfgenBody.parseJson().jsonObject["arbeidsgiverNavn"] shouldBe JsonPrimitive(ARBEIDSGIVER_NAVN)
 
                 val sendt = mockProducer.history()
                 sendt shouldHaveSize 1
@@ -86,6 +93,7 @@ class VedtakRoutesTest :
                         sykepengegrunnlag = 154999.92,
                         utfallTilArbeidsgiver = Utfall.INNVILGELSE,
                         fattetTidspunkt = LocalDateTime.parse("2026-08-05T13:03:25.166498222"),
+                        arbeidsgiverNavn = ARBEIDSGIVER_NAVN,
                     )
             }
         }
@@ -95,7 +103,7 @@ class VedtakRoutesTest :
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
-                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer, TEST_TOPIC)) }
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlient()) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -113,7 +121,7 @@ class VedtakRoutesTest :
             val mockProducer = mockProducer()
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC)) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlient()) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -133,7 +141,51 @@ class VedtakRoutesTest :
             mockPdfgen(HttpStatusCode.InternalServerError, "Error".toByteArray())
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC)) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlient()) }
+
+                val response =
+                    client.post("/arbeidstaker-vedtak") {
+                        contentType(ContentType.Application.Json)
+                        setBody(gyldigMelding(Fnr.genererGyldig().verdi))
+                    }
+
+                response.status shouldBe HttpStatusCode.InternalServerError
+                bucketStorage.pdfer.size shouldBe 0
+                mockProducer.history().shouldBeEmpty()
+            }
+        }
+
+        test("POST /arbeidstaker-vedtak svarer Internal Server Error og gjør ingenting mer når virksomhetsnavn ikke finnes") {
+            val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            testApplication {
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlient(navn = null)) }
+
+                val response =
+                    client.post("/arbeidstaker-vedtak") {
+                        contentType(ContentType.Application.Json)
+                        setBody(gyldigMelding(Fnr.genererGyldig().verdi))
+                    }
+
+                response.status shouldBe HttpStatusCode.InternalServerError
+                bucketStorage.pdfer.size shouldBe 0
+                mockProducer.history().shouldBeEmpty()
+            }
+        }
+
+        test("POST /arbeidstaker-vedtak svarer Internal Server Error og gjør ingenting mer når henting av virksomhetsnavn feiler") {
+            val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+            val klient =
+                mockk<VirksomhetsnavnKlient> {
+                    coEvery { hentVirksomhetsnavn(ORGNR) } throws RuntimeException("brreg nede")
+                }
+
+            testApplication {
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), klient) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -152,7 +204,7 @@ class VedtakRoutesTest :
             val bucketStorage = FakeBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer(), TEST_TOPIC)) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlient()) }
 
                 val response = client.get("/refusjonsutfall/$refusjonsutfallId/pdf")
 
@@ -165,7 +217,7 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf svarer Not Found når PDF ikke finnes i bucket") {
             testApplication {
-                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC)) }
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlient()) }
 
                 val response = client.get("/refusjonsutfall/${UUID.randomUUID()}/pdf")
 
@@ -175,7 +227,7 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf med ugyldig refusjonsutfallId svarer Bad Request") {
             testApplication {
-                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC)) }
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlient()) }
 
                 val response = client.get("/refusjonsutfall/ikke-en-uuid/pdf")
 
@@ -184,6 +236,16 @@ class VedtakRoutesTest :
         }
     })
 
+private const val ARBEIDSGIVER_NAVN = "Billys Bollefabrikk AS"
+private val ORGNR = Orgnr("896929119")
+
+private var pdfgenBody = ""
+
+private fun virksomhetsnavnKlient(navn: String? = ARBEIDSGIVER_NAVN): VirksomhetsnavnKlient =
+    mockk {
+        coEvery { hentVirksomhetsnavn(ORGNR) } returns navn
+    }
+
 private fun mockPdfgen(
     status: HttpStatusCode,
     content: ByteArray,
@@ -191,6 +253,7 @@ private fun mockPdfgen(
     val mockEngine =
         MockEngine { request ->
             request.url.toString() shouldBe PdfgenHttpClient.PDFGEN_REFUSJON_URL
+            pdfgenBody = (request.body as TextContent).text
 
             respond(
                 content = ByteReadChannel(content),

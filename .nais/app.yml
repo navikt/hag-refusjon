@@ -45,7 +45,11 @@ spec:
         - application: helsearbeidsgiver-pdfgen
         - application: logging
           namespace: nais-system
+      external:
+        - host: data.brreg.no
   env:
+    - name: BRREG_URL
+      value: "https://data.brreg.no/enhetsregisteret/api/underenheter"
     - name: KAFKA_TOPIC_REFUSJON
       value: helsearbeidsgiver.refusjon
     - name: PDFGEN_REFUSJON_URL
