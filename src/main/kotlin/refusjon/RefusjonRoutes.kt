@@ -54,7 +54,7 @@ fun Route.refusjonRoutes(
             }
 
         try {
-            val pdf = genererRefusjonPdf(melding.tilRefusjonPdfData(arbeidsgiverNavn))
+            val pdf = genererRefusjonPdf(melding.tilRefusjonUtfallPdfData(arbeidsgiverNavn))
             bucketStorage.lagrePdf(refusjonUtfallId, pdf)
         } catch (e: Exception) {
             "Feil ved generering eller lagring av PDF for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."

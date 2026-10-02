@@ -37,7 +37,7 @@ data class RefusjonUtfallPdfData(
     @SerialName("harArbeidsgiverØnsketRefusjon") val harArbeidsgiverOensketRefusjon: Boolean,
 )
 
-fun ArbeidstakerVedtakMelding.tilRefusjonPdfData(arbeidsgiverNavn: String): RefusjonUtfallPdfData =
+fun ArbeidstakerVedtakMelding.tilRefusjonUtfallPdfData(arbeidsgiverNavn: String): RefusjonUtfallPdfData =
     RefusjonUtfallPdfData(
         foedselsnummer = foedselsnummer,
         yrkesaktivitetstype = yrkesaktivitetstype,

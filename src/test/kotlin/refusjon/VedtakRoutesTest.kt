@@ -57,7 +57,7 @@ class VedtakRoutesTest :
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlient()) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock()) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -99,7 +99,7 @@ class VedtakRoutesTest :
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
-                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlient()) }
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock()) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -117,7 +117,7 @@ class VedtakRoutesTest :
             val mockProducer = mockProducer()
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlient()) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock()) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -137,7 +137,7 @@ class VedtakRoutesTest :
             mockPdfgen(HttpStatusCode.InternalServerError, "Error".toByteArray())
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlient()) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock()) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -157,7 +157,7 @@ class VedtakRoutesTest :
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlient(navn = null)) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock(navn = null)) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -200,7 +200,7 @@ class VedtakRoutesTest :
             val bucketStorage = FakeBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlient()) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlientMock()) }
 
                 val response = client.get("/refusjonsutfall/$refusjonsutfallId/pdf")
 
@@ -213,7 +213,7 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf svarer Not Found når PDF ikke finnes i bucket") {
             testApplication {
-                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlient()) }
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlientMock()) }
 
                 val response = client.get("/refusjonsutfall/${UUID.randomUUID()}/pdf")
 
@@ -223,7 +223,7 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf med ugyldig refusjonsutfallId svarer Bad Request") {
             testApplication {
-                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlient()) }
+                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlientMock()) }
 
                 val response = client.get("/refusjonsutfall/ikke-en-uuid/pdf")
 
@@ -235,7 +235,7 @@ class VedtakRoutesTest :
 private const val ARBEIDSGIVER_NAVN = "Billys Bollefabrikk AS"
 private val ORGNR = Orgnr("896929119")
 
-private fun virksomhetsnavnKlient(navn: String? = ARBEIDSGIVER_NAVN): VirksomhetsnavnKlient =
+private fun virksomhetsnavnKlientMock(navn: String? = ARBEIDSGIVER_NAVN): VirksomhetsnavnKlient =
     mockk {
         coEvery { hentVirksomhetsnavn(ORGNR) } returns navn
     }
