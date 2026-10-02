@@ -44,6 +44,9 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
 
+private const val ARBEIDSGIVER_NAVN = "Billys Bollefabrikk AS"
+private val ORGNR = Orgnr("896929119")
+
 class VedtakRoutesTest :
     FunSpec({
         val pdfBytes = "PDF innhold".toByteArray()
@@ -231,9 +234,6 @@ class VedtakRoutesTest :
             }
         }
     })
-
-private const val ARBEIDSGIVER_NAVN = "Billys Bollefabrikk AS"
-private val ORGNR = Orgnr("896929119")
 
 private fun virksomhetsnavnKlientMock(navn: String? = ARBEIDSGIVER_NAVN): VirksomhetsnavnKlient =
     mockk {

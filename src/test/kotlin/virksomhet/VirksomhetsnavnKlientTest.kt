@@ -9,21 +9,21 @@ import io.mockk.mockk
 import no.nav.helsearbeidsgiver.brreg.BrregClient
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 
+private const val VIRKSOMHETSNAVN = "Sprellende Sei Fiskeri AS"
+private val ORGNR = Orgnr("896929119")
+
 class VirksomhetsnavnKlientTest :
     FunSpec({
-        val orgnr = Orgnr("896929119")
-        val virksomhetsnavn = "Sprellende Sei Fiskeri AS"
-
         context("BrregVirksomhetsnavnKlient") {
             test("henter virksomhetsnavn for orgnr fra Brreg") {
                 val brregClient =
                     mockk<BrregClient> {
-                        coEvery { hentOrganisasjonNavn(setOf(orgnr.verdi)) } returns mapOf(orgnr to virksomhetsnavn)
+                        coEvery { hentOrganisasjonNavn(setOf(ORGNR.verdi)) } returns mapOf(ORGNR to VIRKSOMHETSNAVN)
                     }
 
-                BrregVirksomhetsnavnKlient(brregClient).hentVirksomhetsnavn(orgnr) shouldBe virksomhetsnavn
+                BrregVirksomhetsnavnKlient(brregClient).hentVirksomhetsnavn(ORGNR) shouldBe VIRKSOMHETSNAVN
 
-                coVerify(exactly = 1) { brregClient.hentOrganisasjonNavn(setOf(orgnr.verdi)) }
+                coVerify(exactly = 1) { brregClient.hentOrganisasjonNavn(setOf(ORGNR.verdi)) }
             }
 
             test("gir null når Brreg ikke har navn for orgnr") {
@@ -32,13 +32,13 @@ class VirksomhetsnavnKlientTest :
                         coEvery { hentOrganisasjonNavn(any()) } returns emptyMap()
                     }
 
-                BrregVirksomhetsnavnKlient(brregClient).hentVirksomhetsnavn(orgnr).shouldBeNull()
+                BrregVirksomhetsnavnKlient(brregClient).hentVirksomhetsnavn(ORGNR).shouldBeNull()
             }
         }
 
         context("DevVirksomhetsnavnKlient") {
             test("gir hardkodet virksomhetsnavn") {
-                DevVirksomhetsnavnKlient().hentVirksomhetsnavn(orgnr) shouldBe DevVirksomhetsnavnKlient.DEV_VIRKSOMHETSNAVN
+                DevVirksomhetsnavnKlient().hentVirksomhetsnavn(ORGNR) shouldBe DevVirksomhetsnavnKlient.DEV_VIRKSOMHETSNAVN
             }
         }
     })
