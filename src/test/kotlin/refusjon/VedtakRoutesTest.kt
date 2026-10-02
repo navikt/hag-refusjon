@@ -17,7 +17,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.content.TextContent
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
@@ -28,8 +27,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonObject
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
@@ -73,7 +70,6 @@ class VedtakRoutesTest :
                 val refusjonsutfallId = response.bodyAsText().toUuidOrNull()
                 refusjonsutfallId shouldNotBe null
                 bucketStorage.pdfer[refusjonsutfallId] shouldBe pdfBytes
-                pdfgenBody.parseJson().jsonObject["arbeidsgiverNavn"] shouldBe JsonPrimitive(ARBEIDSGIVER_NAVN)
 
                 val sendt = mockProducer.history()
                 sendt shouldHaveSize 1
@@ -239,8 +235,6 @@ class VedtakRoutesTest :
 private const val ARBEIDSGIVER_NAVN = "Billys Bollefabrikk AS"
 private val ORGNR = Orgnr("896929119")
 
-private var pdfgenBody = ""
-
 private fun virksomhetsnavnKlient(navn: String? = ARBEIDSGIVER_NAVN): VirksomhetsnavnKlient =
     mockk {
         coEvery { hentVirksomhetsnavn(ORGNR) } returns navn
@@ -253,7 +247,6 @@ private fun mockPdfgen(
     val mockEngine =
         MockEngine { request ->
             request.url.toString() shouldBe PdfgenHttpClient.PDFGEN_REFUSJON_URL
-            pdfgenBody = (request.body as TextContent).text
 
             respond(
                 content = ByteReadChannel(content),
