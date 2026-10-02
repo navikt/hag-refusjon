@@ -35,7 +35,10 @@ enum class Utfall {
     INNVILGELSE,
 }
 
-fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(refusjonsutfallId: UUID): RefusjonUtfall =
+fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
+    refusjonsutfallId: UUID,
+    arbeidsgiverNavn: String,
+): RefusjonUtfall =
     RefusjonUtfall(
         refusjonUtfallId = refusjonsutfallId,
         vedtaksperiodeId = vedtaksperiodeId,
@@ -51,4 +54,5 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(refusjonsutfallId: UUID): Refusj
                 VedtaksUtfall.INNVILGELSE -> Utfall.INNVILGELSE
             },
         fattetTidspunkt = vedtakFattetTidspunkt,
+        arbeidsgiverNavn = arbeidsgiverNavn,
     )
