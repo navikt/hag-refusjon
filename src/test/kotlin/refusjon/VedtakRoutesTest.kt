@@ -32,6 +32,7 @@ import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
 import no.nav.helsearbeidsgiver.kafka.mockProducer
 import no.nav.helsearbeidsgiver.module
+import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.utils.PdfgenHttpClient
 import no.nav.helsearbeidsgiver.utils.json.fromJson
 import no.nav.helsearbeidsgiver.utils.json.parseJson
@@ -45,7 +46,9 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 private const val ARBEIDSGIVER_NAVN = "Billys Bollefabrikk AS"
+private const val SYKMELDT_NAVN = "Ola Nordmann"
 private val ORGNR = Orgnr("896929119")
+private val FNR = Fnr.genererGyldig()
 
 class VedtakRoutesTest :
     FunSpec({
@@ -54,18 +57,24 @@ class VedtakRoutesTest :
         afterEach { unmockkAll() }
 
         test("POST /arbeidstaker-vedtak med gyldig melding genererer PDF, lagrer den i bucket og svarer med refusjonsutfallId") {
-            val fnr = Fnr.genererGyldig()
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock()) }
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer, TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(),
+                    )
+                }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(fnr.verdi))
+                        setBody(gyldigMelding(FNR.verdi))
                     }
 
                 response.status shouldBe HttpStatusCode.OK
@@ -85,7 +94,7 @@ class VedtakRoutesTest :
                     RefusjonUtfall(
                         refusjonUtfallId = refusjonsutfallId!!,
                         vedtaksperiodeId = UUID.fromString("c62594af-f0b8-4fd1-88f2-07e1b15dd906"),
-                        fnr = fnr,
+                        fnr = FNR,
                         orgnr = Orgnr("896929119"),
                         fom = LocalDate.of(2026, 7, 28),
                         tom = LocalDate.of(2026, 8, 3),
@@ -93,6 +102,7 @@ class VedtakRoutesTest :
                         utfallTilArbeidsgiver = Utfall.INNVILGELSE,
                         fattetTidspunkt = LocalDateTime.parse("2026-08-05T13:03:25.166498222"),
                         arbeidsgiverNavn = ARBEIDSGIVER_NAVN,
+                        sykmeldtNavn = SYKMELDT_NAVN,
                     )
             }
         }
@@ -102,12 +112,19 @@ class VedtakRoutesTest :
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
-                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock()) }
+                application {
+                    module(
+                        FakeBucketStorage(),
+                        RefusjonProducer(mockProducer, TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(),
+                    )
+                }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(Fnr.genererGyldig().verdi))
+                        setBody(gyldigMelding(FNR.verdi))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -120,7 +137,14 @@ class VedtakRoutesTest :
             val mockProducer = mockProducer()
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock()) }
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer, TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(),
+                    )
+                }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -140,12 +164,19 @@ class VedtakRoutesTest :
             mockPdfgen(HttpStatusCode.InternalServerError, "Error".toByteArray())
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock()) }
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer, TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(),
+                    )
+                }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(Fnr.genererGyldig().verdi))
+                        setBody(gyldigMelding(FNR.verdi))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -160,12 +191,19 @@ class VedtakRoutesTest :
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock(navn = null)) }
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer, TEST_TOPIC),
+                        virksomhetsnavnKlientMock(navn = null),
+                        pdlServiceMock(),
+                    )
+                }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(Fnr.genererGyldig().verdi))
+                        setBody(gyldigMelding(FNR.verdi))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -184,12 +222,63 @@ class VedtakRoutesTest :
                 }
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), klient) }
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), klient, pdlServiceMock()) }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(Fnr.genererGyldig().verdi))
+                        setBody(gyldigMelding(FNR.verdi))
+                    }
+
+                response.status shouldBe HttpStatusCode.InternalServerError
+                bucketStorage.pdfer.size shouldBe 0
+                mockProducer.history().shouldBeEmpty()
+            }
+        }
+
+        test("POST /arbeidstaker-vedtak svarer Internal Server Error og gjør ingenting mer når sykmeldtnavn ikke finnes") {
+            val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            testApplication {
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer, TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(navn = null),
+                    )
+                }
+
+                val response =
+                    client.post("/arbeidstaker-vedtak") {
+                        contentType(ContentType.Application.Json)
+                        setBody(gyldigMelding(FNR.verdi))
+                    }
+
+                response.status shouldBe HttpStatusCode.InternalServerError
+                bucketStorage.pdfer.size shouldBe 0
+                mockProducer.history().shouldBeEmpty()
+            }
+        }
+
+        test("POST /arbeidstaker-vedtak svarer Internal Server Error og gjør ingenting mer når henting av sykmeldtnavn feiler") {
+            val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+            val klient =
+                mockk<PdlService> {
+                    coEvery { hentSykmeldtnavn(FNR) } throws RuntimeException("pdl nede")
+                }
+
+            testApplication {
+                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock(), klient) }
+
+                val response =
+                    client.post("/arbeidstaker-vedtak") {
+                        contentType(ContentType.Application.Json)
+                        setBody(gyldigMelding(FNR.verdi))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -203,7 +292,14 @@ class VedtakRoutesTest :
             val bucketStorage = FakeBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlientMock()) }
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer(), TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(),
+                    )
+                }
 
                 val response = client.get("/refusjonsutfall/$refusjonsutfallId/pdf")
 
@@ -216,7 +312,14 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf svarer Not Found når PDF ikke finnes i bucket") {
             testApplication {
-                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlientMock()) }
+                application {
+                    module(
+                        FakeBucketStorage(),
+                        RefusjonProducer(mockProducer(), TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(),
+                    )
+                }
 
                 val response = client.get("/refusjonsutfall/${UUID.randomUUID()}/pdf")
 
@@ -226,7 +329,14 @@ class VedtakRoutesTest :
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf med ugyldig refusjonsutfallId svarer Bad Request") {
             testApplication {
-                application { module(FakeBucketStorage(), RefusjonProducer(mockProducer(), TEST_TOPIC), virksomhetsnavnKlientMock()) }
+                application {
+                    module(
+                        FakeBucketStorage(),
+                        RefusjonProducer(mockProducer(), TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(),
+                    )
+                }
 
                 val response = client.get("/refusjonsutfall/ikke-en-uuid/pdf")
 
@@ -238,6 +348,11 @@ class VedtakRoutesTest :
 private fun virksomhetsnavnKlientMock(navn: String? = ARBEIDSGIVER_NAVN): VirksomhetsnavnKlient =
     mockk {
         coEvery { hentVirksomhetsnavn(ORGNR) } returns navn
+    }
+
+private fun pdlServiceMock(navn: String? = SYKMELDT_NAVN): PdlService =
+    mockk {
+        coEvery { hentSykmeldtnavn(FNR) } returns navn
     }
 
 private fun mockPdfgen(

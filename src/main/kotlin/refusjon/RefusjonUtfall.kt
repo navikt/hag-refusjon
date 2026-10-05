@@ -38,6 +38,7 @@ enum class Utfall {
 fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
     refusjonsutfallId: UUID,
     arbeidsgiverNavn: String,
+    sykmeldtNavn: String,
 ): RefusjonUtfall =
     RefusjonUtfall(
         refusjonUtfallId = refusjonsutfallId,
@@ -54,5 +55,6 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
                 VedtaksUtfall.INNVILGELSE -> Utfall.INNVILGELSE
             },
         fattetTidspunkt = vedtakFattetTidspunkt,
+        sykmeldtNavn = sykmeldtNavn,
         arbeidsgiverNavn = arbeidsgiverNavn,
     )

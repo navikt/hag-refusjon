@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class RefusjonUtfallPdfData(
     val arbeidstakerVedtak: ArbeidstakerVedtakMelding,
+    val sykmeldtNavn: String,
     val arbeidsgiverNavn: String,
 )

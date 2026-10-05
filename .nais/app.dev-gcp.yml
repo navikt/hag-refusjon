@@ -1,4 +1,8 @@
 spec:
+  accessPolicy:
+    outbound:
+      external:
+        - host: pdl-api.dev-fss-pub.nais.io
   kafka:
     pool: nav-dev
   gcp:
@@ -8,3 +12,7 @@ spec:
   env:
     - name: GCP_BUCKET_NAME
       value: helsearbeidsgiver-refusjon-dev
+    - name: PDL_URL
+      value: "https://pdl-api.dev-fss-pub.nais.io/graphql"
+    - name: PDL_SCOPE
+      value: "api://dev-fss.pdl.pdl-api/.default"

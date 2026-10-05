@@ -17,6 +17,7 @@ import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
 import no.nav.helsearbeidsgiver.helsesjekker.naisRoutes
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.kafka.createKafkaProducerConfig
+import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.utils.cache.LocalCache
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.pipe.orDefault
@@ -50,10 +51,16 @@ fun main() {
                 ),
             )
         }
+    val pdlService =
+        PdlService(
+            url = getPropertyOrNull("PDL_URL").orDefault { throw RuntimeException("PDL_URL ikke satt") },
+            scope = getPropertyOrNull("PDL_SCOPE").orDefault { throw RuntimeException("PDL_SCOPE ikke satt") },
+            tokenEndpoint = getPropertyOrNull("NAIS_TOKEN_ENDPOINT").orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
+        )
     embeddedServer(
         factory = Netty,
         port = 8080,
-        module = { module(bucketStorage, refusjonProducer, virksomhetsnavnKlient) },
+        module = { module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService) },
     ).start(wait = true)
 }
 
@@ -61,6 +68,7 @@ fun Application.module(
     bucketStorage: BucketStorage,
     refusjonProducer: RefusjonProducer,
     virksomhetsnavnKlient: VirksomhetsnavnKlient,
+    pdlService: PdlService,
 ) {
     install(ContentNegotiation) {
         json(jsonConfig)
@@ -70,6 +78,6 @@ fun Application.module(
         get("/hello") {
             call.respondText("Hello World!")
         }
-        refusjonRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient)
+        refusjonRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService)
     }
 }

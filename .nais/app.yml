@@ -47,6 +47,9 @@ spec:
           namespace: nais-system
       external:
         - host: data.brreg.no
+  azure:
+    application:
+      enabled: true
   env:
     - name: BRREG_URL
       value: "https://data.brreg.no/enhetsregisteret/api/underenheter"
