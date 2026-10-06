@@ -31,6 +31,7 @@ repositories {
 
 dependencies {
     val brregClientVersion: String by project
+    val dokarkivClientVersion: String by project
     val gcpStorageVersion: String by project
     val kafkaVersion: String by project
     val ktorVersion: String by project
@@ -50,6 +51,7 @@ dependencies {
     implementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
     implementation("net.logstash.logback:logstash-logback-encoder:$logbackEncoderVersion")
     implementation("no.nav.helsearbeidsgiver:brreg-client:$brregClientVersion")
+    implementation("no.nav.helsearbeidsgiver:dokarkiv-client:$dokarkivClientVersion")
     implementation("no.nav.helsearbeidsgiver:pdl-client:$pdlClientVersion")
     implementation("no.nav.helsearbeidsgiver:utils:$utilsVersion")
     implementation("org.apache.kafka:kafka-clients:$kafkaVersion")

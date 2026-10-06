@@ -7,6 +7,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import io.mockk.mockk
+import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
@@ -24,6 +25,7 @@ class AppTest :
                         RefusjonProducer(mockProducer(), TEST_TOPIC),
                         mockk<VirksomhetsnavnKlient>(),
                         mockk<PdlService>(),
+                        mockk<ArkivService>(),
                     )
                 }
 
@@ -42,6 +44,7 @@ class AppTest :
                         RefusjonProducer(mockProducer(), TEST_TOPIC),
                         mockk<VirksomhetsnavnKlient>(),
                         mockk<PdlService>(),
+                        mockk<ArkivService>(),
                     )
                 }
 
