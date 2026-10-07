@@ -47,7 +47,7 @@ import java.util.UUID
 
 private const val ARBEIDSGIVER_NAVN = "Billys Bollefabrikk AS"
 private const val SYKMELDT_NAVN = "Ola Nordmann"
-private val ORGNR = Orgnr("896929119")
+private val ORGNR = Orgnr.genererGyldig()
 private val FNR = Fnr.genererGyldig()
 
 class VedtakRoutesTest :
@@ -74,7 +74,7 @@ class VedtakRoutesTest :
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(FNR.verdi))
+                        setBody(gyldigMelding(FNR, ORGNR))
                     }
 
                 response.status shouldBe HttpStatusCode.OK
@@ -95,7 +95,7 @@ class VedtakRoutesTest :
                         refusjonUtfallId = refusjonsutfallId!!,
                         vedtaksperiodeId = UUID.fromString("c62594af-f0b8-4fd1-88f2-07e1b15dd906"),
                         fnr = FNR,
-                        orgnr = Orgnr("896929119"),
+                        orgnr = ORGNR,
                         fom = LocalDate.of(2026, 7, 28),
                         tom = LocalDate.of(2026, 8, 3),
                         sykepengegrunnlag = 154999.92,
@@ -124,7 +124,7 @@ class VedtakRoutesTest :
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(FNR.verdi))
+                        setBody(gyldigMelding(FNR, ORGNR))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -176,7 +176,7 @@ class VedtakRoutesTest :
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(FNR.verdi))
+                        setBody(gyldigMelding(FNR, ORGNR))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -203,7 +203,7 @@ class VedtakRoutesTest :
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(FNR.verdi))
+                        setBody(gyldigMelding(FNR, ORGNR))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -227,7 +227,7 @@ class VedtakRoutesTest :
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(FNR.verdi))
+                        setBody(gyldigMelding(FNR, ORGNR))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -254,7 +254,7 @@ class VedtakRoutesTest :
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(FNR.verdi))
+                        setBody(gyldigMelding(FNR, ORGNR))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -278,7 +278,7 @@ class VedtakRoutesTest :
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(FNR.verdi))
+                        setBody(gyldigMelding(FNR, ORGNR))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -380,12 +380,15 @@ private fun mockPdfgen(
     every { PdfgenHttpClient.httpClient } returns mockHttpClient
 }
 
-private fun gyldigMelding(fnr: String): String =
+private fun gyldigMelding(
+    fnr: Fnr,
+    orgnr: Orgnr,
+): String =
     """
     {
       "eventName": "vedtak_fattet",
       "fødselsnummer": "$fnr",
-      "organisasjonsnummer": "896929119",
+      "organisasjonsnummer": "$orgnr",
       "yrkesaktivitetstype": "ARBEIDSTAKER",
       "vedtaksperiodeId": "c62594af-f0b8-4fd1-88f2-07e1b15dd906",
       "fom": "2026-07-28",
