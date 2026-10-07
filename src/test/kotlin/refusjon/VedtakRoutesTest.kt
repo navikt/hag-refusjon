@@ -279,7 +279,7 @@ class VedtakRoutesTest :
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(FNR.verdi))
+                        setBody(gyldigMelding(FNR, ORGNR))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
@@ -307,7 +307,7 @@ class VedtakRoutesTest :
                 val response =
                     client.post("/arbeidstaker-vedtak") {
                         contentType(ContentType.Application.Json)
-                        setBody(gyldigMelding(FNR.verdi))
+                        setBody(gyldigMelding(FNR, ORGNR))
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
