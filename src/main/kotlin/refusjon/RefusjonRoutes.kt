@@ -9,6 +9,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
+import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.utils.genererRefusjonPdf
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import no.nav.helsearbeidsgiver.utils.respondMedPDF
@@ -23,6 +24,7 @@ fun Route.refusjonRoutes(
     bucketStorage: BucketStorage,
     refusjonProducer: RefusjonProducer,
     virksomhetsnavnKlient: VirksomhetsnavnKlient,
+    pdlService: PdlService,
 ) {
     // midlertidlig mottak POST route fra LPS API (bytter til å motta direkte fra SAS i fremtiden)
     post("/arbeidstaker-vedtak") {
@@ -53,8 +55,22 @@ fun Route.refusjonRoutes(
                 return@post
             }
 
+        val sykmeldtNavn =
+            try {
+                pdlService.hentSykmeldtnavn(melding.foedselsnummer)
+                    ?: throw IllegalStateException("Fant ikke sykmeldtnavn.")
+            } catch (e: Exception) {
+                "Feil ved henting av sykmeldtnavn for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
+                    .also {
+                        logger.error(it)
+                        sikkerLogger().error(it, e)
+                    }
+                call.respond(HttpStatusCode.InternalServerError, "Feil ved henting av sykmeldtnavn")
+                return@post
+            }
+
         try {
-            val pdf = genererRefusjonPdf(RefusjonUtfallPdfData(melding, arbeidsgiverNavn))
+            val pdf = genererRefusjonPdf(melding.tilRefusjonUtfallPdfData(arbeidsgiverNavn, sykmeldtNavn))
             bucketStorage.lagrePdf(refusjonUtfallId, pdf)
         } catch (e: Exception) {
             "Feil ved generering eller lagring av PDF for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
@@ -71,7 +87,7 @@ fun Route.refusjonRoutes(
         )
 
         try {
-            refusjonProducer.send(melding.vedtaksperiodeId, melding.tilRefusjonUtfall(refusjonUtfallId, arbeidsgiverNavn))
+            refusjonProducer.send(melding.vedtaksperiodeId, melding.tilRefusjonUtfall(refusjonUtfallId, arbeidsgiverNavn, sykmeldtNavn))
         } catch (e: Exception) {
             "Feil ved publisering av refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
                 .also {

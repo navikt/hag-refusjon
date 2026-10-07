@@ -36,6 +36,7 @@ dependencies {
     val ktorVersion: String by project
     val logbackEncoderVersion: String by project
     val logbackVersion: String by project
+    val pdlClientVersion: String by project
     val utilsVersion: String by project
 
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
@@ -49,6 +50,7 @@ dependencies {
     implementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
     implementation("net.logstash.logback:logstash-logback-encoder:$logbackEncoderVersion")
     implementation("no.nav.helsearbeidsgiver:brreg-client:$brregClientVersion")
+    implementation("no.nav.helsearbeidsgiver:pdl-client:$pdlClientVersion")
     implementation("no.nav.helsearbeidsgiver:utils:$utilsVersion")
     implementation("org.apache.kafka:kafka-clients:$kafkaVersion")
 
