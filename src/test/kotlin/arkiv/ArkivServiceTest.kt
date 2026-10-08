@@ -37,22 +37,19 @@ class ArkivServiceTest :
             val dokumenter = slot<List<Dokument>>()
             val eksternReferanseId = slot<String>()
             val kanal = slot<Kanal>()
-            val journalposttype = slot<Journalposttype>()
 
             val dokArkivClient =
                 mockk<DokArkivClient> {
                     coEvery {
-                        opprettOgFerdigstillJournalpost(
+                        opprettOgFerdigstillJournalpostUtgaaende(
                             tittel = "Refusjon av sykepenger til arbeidsgiver",
                             gjelderPerson = GjelderPerson(fnr.verdi),
                             avsender = capture(avsender),
-                            datoMottatt = any(),
                             dokumenter = capture(dokumenter),
                             eksternReferanseId = capture(eksternReferanseId),
                             callId = any(),
                             kanal = capture(kanal),
                             overstyrInnsynsregler = null,
-                            journalposttype = capture(journalposttype),
                         )
                     } returns
                         OpprettOgFerdigstillResponse(
@@ -74,7 +71,6 @@ class ArkivServiceTest :
             avsender.captured shouldBe Avsender.Organisasjon(orgnr = orgnr.verdi, navn = "Billys Bollefabrikk AS")
             eksternReferanseId.captured shouldBe refusjonUtfallId.toString()
             kanal.captured shouldBe Kanal.ALTINN
-            journalposttype.captured shouldBe Journalposttype.UTGAAENDE
             dokumenter.captured shouldBe
                 listOf(
                     Dokument(

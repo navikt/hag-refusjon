@@ -33,11 +33,10 @@ class ArkivService(
         pdf: ByteArray,
     ): String =
         dokArkivClient
-            .opprettOgFerdigstillJournalpost(
+            .opprettOgFerdigstillJournalpostUtgaaende(
                 tittel = TITTEL,
                 gjelderPerson = GjelderPerson(melding.foedselsnummer.verdi),
                 avsender = Avsender.Organisasjon(orgnr = melding.organisasjonsnummer.verdi, navn = arbeidsgiverNavn),
-                datoMottatt = LocalDate.now(),
                 dokumenter =
                     listOf(
                         Dokument(
@@ -57,6 +56,5 @@ class ArkivService(
                 eksternReferanseId = refusjonUtfallId.toString(),
                 callId = UUID.randomUUID().toString(),
                 kanal = Kanal.ALTINN,
-                journalposttype = Journalposttype.UTGAAENDE,
             ).journalpostId
 }
