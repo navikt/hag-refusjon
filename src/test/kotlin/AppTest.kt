@@ -8,6 +8,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import io.mockk.mockk
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
+import no.nav.helsearbeidsgiver.auth.FakeTokenValidator
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
@@ -26,6 +27,7 @@ class AppTest :
                         mockk<VirksomhetsnavnKlient>(),
                         mockk<PdlService>(),
                         mockk<ArkivService>(),
+                        FakeTokenValidator(),
                     )
                 }
 
@@ -45,6 +47,7 @@ class AppTest :
                         mockk<VirksomhetsnavnKlient>(),
                         mockk<PdlService>(),
                         mockk<ArkivService>(),
+                        FakeTokenValidator(),
                     )
                 }
 

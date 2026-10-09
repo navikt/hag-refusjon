@@ -21,7 +21,7 @@ import java.util.UUID
 
 private val logger = LoggerFactory.getLogger("RefusjonRoutes")
 
-fun Route.refusjonRoutes(
+fun Route.vedtakRoutes(
     bucketStorage: BucketStorage,
     refusjonProducer: RefusjonProducer,
     virksomhetsnavnKlient: VirksomhetsnavnKlient,
@@ -128,7 +128,9 @@ fun Route.refusjonRoutes(
 
         call.respond(HttpStatusCode.OK, refusjonUtfallId.toString())
     }
+}
 
+fun Route.pdfRoutes(bucketStorage: BucketStorage) {
     get("/refusjonsutfall/{refusjonsutfallId}/pdf") {
         val refusjonsutfallId = call.parameters["refusjonsutfallId"]?.toUuidOrNull()
         if (refusjonsutfallId == null) {

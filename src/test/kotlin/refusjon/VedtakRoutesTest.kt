@@ -9,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -29,6 +30,8 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
+import no.nav.helsearbeidsgiver.auth.FakeTokenValidator
+import no.nav.helsearbeidsgiver.auth.GYLDIG_TOKEN
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
@@ -73,6 +76,7 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
                         arkivService,
+                        FakeTokenValidator(),
                     )
                 }
 
@@ -127,6 +131,7 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
                         arkivServiceMock(),
+                        FakeTokenValidator(),
                     )
                 }
 
@@ -158,6 +163,7 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
                         arkivService,
+                        FakeTokenValidator(),
                     )
                 }
 
@@ -185,6 +191,7 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
                         arkivServiceMock(),
+                        FakeTokenValidator(),
                     )
                 }
 
@@ -213,6 +220,7 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
                         arkivServiceMock(),
+                        FakeTokenValidator(),
                     )
                 }
 
@@ -241,6 +249,7 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(navn = null),
                         pdlServiceMock(),
                         arkivServiceMock(),
+                        FakeTokenValidator(),
                     )
                 }
 
@@ -273,6 +282,7 @@ class VedtakRoutesTest :
                         klient,
                         pdlServiceMock(),
                         arkivServiceMock(),
+                        FakeTokenValidator(),
                     )
                 }
 
@@ -301,6 +311,7 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(navn = null),
                         arkivServiceMock(),
+                        FakeTokenValidator(),
                     )
                 }
 
@@ -333,6 +344,7 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(),
                         klient,
                         arkivServiceMock(),
+                        FakeTokenValidator(),
                     )
                 }
 
@@ -360,10 +372,11 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
                         arkivServiceMock(),
+                        FakeTokenValidator(),
                     )
                 }
 
-                val response = client.get("/refusjonsutfall/$refusjonsutfallId/pdf")
+                val response = client.get("/refusjonsutfall/$refusjonsutfallId/pdf") { bearerAuth(GYLDIG_TOKEN) }
 
                 response.status shouldBe HttpStatusCode.OK
                 response.headers[HttpHeaders.ContentType] shouldBe ContentType.Application.Pdf.toString()
@@ -381,10 +394,11 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
                         arkivServiceMock(),
+                        FakeTokenValidator(),
                     )
                 }
 
-                val response = client.get("/refusjonsutfall/${UUID.randomUUID()}/pdf")
+                val response = client.get("/refusjonsutfall/${UUID.randomUUID()}/pdf") { bearerAuth(GYLDIG_TOKEN) }
 
                 response.status shouldBe HttpStatusCode.NotFound
             }
@@ -399,12 +413,57 @@ class VedtakRoutesTest :
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
                         arkivServiceMock(),
+                        FakeTokenValidator(),
                     )
                 }
 
-                val response = client.get("/refusjonsutfall/ikke-en-uuid/pdf")
+                val response = client.get("/refusjonsutfall/ikke-en-uuid/pdf") { bearerAuth(GYLDIG_TOKEN) }
 
                 response.status shouldBe HttpStatusCode.BadRequest
+            }
+        }
+
+        test("GET /refusjonsutfall/{refusjonsutfallId}/pdf med ugyldig token svarer Unauthorized") {
+            val refusjonsutfallId = UUID.randomUUID()
+            val bucketStorage = FakeBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
+
+            testApplication {
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer(), TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(),
+                        arkivServiceMock(),
+                        FakeTokenValidator(),
+                    )
+                }
+
+                val response = client.get("/refusjonsutfall/$refusjonsutfallId/pdf") { bearerAuth("ugyldig-token") }
+
+                response.status shouldBe HttpStatusCode.Unauthorized
+            }
+        }
+
+        test("GET /refusjonsutfall/{refusjonsutfallId}/pdf uten token svarer Unauthorized") {
+            val refusjonsutfallId = UUID.randomUUID()
+            val bucketStorage = FakeBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
+
+            testApplication {
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer(), TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(),
+                        arkivServiceMock(),
+                        FakeTokenValidator(),
+                    )
+                }
+
+                val response = client.get("/refusjonsutfall/$refusjonsutfallId/pdf")
+
+                response.status shouldBe HttpStatusCode.Unauthorized
             }
         }
     })
