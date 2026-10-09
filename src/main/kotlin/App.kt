@@ -17,6 +17,7 @@ import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.auth.TexasTokenValidator
 import no.nav.helsearbeidsgiver.auth.TokenPrincipal
 import no.nav.helsearbeidsgiver.auth.TokenValidator
+import no.nav.helsearbeidsgiver.auth.parsePreAutoriserteKlientIder
 import no.nav.helsearbeidsgiver.brreg.BrregClient
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
@@ -70,6 +71,11 @@ fun main() {
             introspectionEndpoint =
                 getPropertyOrNull("NAIS_TOKEN_INTROSPECTION_ENDPOINT")
                     .orDefault { throw RuntimeException("NAIS_TOKEN_INTROSPECTION_ENDPOINT ikke satt") },
+            preAutoriserteKlientIder =
+                parsePreAutoriserteKlientIder(
+                    getPropertyOrNull("AZURE_APP_PRE_AUTHORIZED_APPS")
+                        .orDefault { throw RuntimeException("AZURE_APP_PRE_AUTHORIZED_APPS ikke satt") },
+                ),
         )
     embeddedServer(
         factory = Netty,
