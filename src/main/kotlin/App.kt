@@ -3,6 +3,9 @@ package no.nav.helsearbeidsgiver
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import io.ktor.server.auth.Authentication
+import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.bearer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
@@ -11,6 +14,9 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import no.nav.helsearbeidsgiver.Env.getPropertyOrNull
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
+import no.nav.helsearbeidsgiver.auth.TexasTokenValidator
+import no.nav.helsearbeidsgiver.auth.TokenPrincipal
+import no.nav.helsearbeidsgiver.auth.TokenValidator
 import no.nav.helsearbeidsgiver.brreg.BrregClient
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
@@ -59,10 +65,16 @@ fun main() {
             scope = getPropertyOrNull("DOKARKIV_SCOPE").orDefault { throw RuntimeException("DOKARKIV_SCOPE ikke satt") },
             tokenEndpoint = getPropertyOrNull("NAIS_TOKEN_ENDPOINT").orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
         )
+    val tokenValidator =
+        TexasTokenValidator(
+            introspectionEndpoint =
+                getPropertyOrNull("NAIS_TOKEN_INTROSPECTION_ENDPOINT")
+                    .orDefault { throw RuntimeException("NAIS_TOKEN_INTROSPECTION_ENDPOINT ikke satt") },
+        )
     embeddedServer(
         factory = Netty,
         port = 8080,
-        module = { module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService) },
+        module = { module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService, tokenValidator) },
     ).start(wait = true)
 }
 
@@ -72,9 +84,17 @@ fun Application.module(
     virksomhetsnavnKlient: VirksomhetsnavnKlient,
     pdlService: PdlService,
     arkivService: ArkivService,
+    tokenValidator: TokenValidator,
 ) {
     install(ContentNegotiation) {
         json(jsonConfig)
+    }
+    install(Authentication) {
+        bearer(ENTRA_ID_AUTH) {
+            authenticate { credential ->
+                tokenValidator.valider(credential.token)?.let(::TokenPrincipal)
+            }
+        }
     }
     routing {
         naisRoutes()
@@ -82,6 +102,10 @@ fun Application.module(
             call.respondText("Hello World!")
         }
         vedtakRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService)
-        pdfRoutes(bucketStorage)
+        authenticate(ENTRA_ID_AUTH) {
+            pdfRoutes(bucketStorage)
+        }
     }
 }
+
+private const val ENTRA_ID_AUTH = "entra-id"
