@@ -10,6 +10,7 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import no.nav.helsearbeidsgiver.Env.getPropertyOrNull
+import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.brreg.BrregClient
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
@@ -51,10 +52,16 @@ fun main() {
             scope = getPropertyOrNull("PDL_SCOPE").orDefault { throw RuntimeException("PDL_SCOPE ikke satt") },
             tokenEndpoint = getPropertyOrNull("NAIS_TOKEN_ENDPOINT").orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
         )
+    val arkivService =
+        ArkivService(
+            url = getPropertyOrNull("DOKARKIV_URL").orDefault { throw RuntimeException("DOKARKIV_URL ikke satt") },
+            scope = getPropertyOrNull("DOKARKIV_SCOPE").orDefault { throw RuntimeException("DOKARKIV_SCOPE ikke satt") },
+            tokenEndpoint = getPropertyOrNull("NAIS_TOKEN_ENDPOINT").orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
+        )
     embeddedServer(
         factory = Netty,
         port = 8080,
-        module = { module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService) },
+        module = { module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService) },
     ).start(wait = true)
 }
 
@@ -63,6 +70,7 @@ fun Application.module(
     refusjonProducer: RefusjonProducer,
     virksomhetsnavnKlient: VirksomhetsnavnKlient,
     pdlService: PdlService,
+    arkivService: ArkivService,
 ) {
     install(ContentNegotiation) {
         json(jsonConfig)
@@ -72,6 +80,6 @@ fun Application.module(
         get("/hello") {
             call.respondText("Hello World!")
         }
-        refusjonRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService)
+        refusjonRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService)
     }
 }

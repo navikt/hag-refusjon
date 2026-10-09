@@ -23,10 +23,12 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
 import io.ktor.utils.io.ByteReadChannel
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
@@ -47,6 +49,7 @@ import java.util.UUID
 
 private const val ARBEIDSGIVER_NAVN = "Billys Bollefabrikk AS"
 private const val SYKMELDT_NAVN = "Ola Nordmann"
+private const val JOURNALPOST_ID = "123456789"
 private val ORGNR = Orgnr.genererGyldig()
 private val FNR = Fnr.genererGyldig()
 
@@ -59,6 +62,7 @@ class VedtakRoutesTest :
         test("POST /arbeidstaker-vedtak med gyldig melding genererer PDF, lagrer den i bucket og svarer med refusjonsutfallId") {
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
+            val arkivService = arkivServiceMock()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
             testApplication {
@@ -68,6 +72,7 @@ class VedtakRoutesTest :
                         RefusjonProducer(mockProducer, TEST_TOPIC),
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
+                        arkivService,
                     )
                 }
 
@@ -82,6 +87,8 @@ class VedtakRoutesTest :
                 val refusjonsutfallId = response.bodyAsText().toUuidOrNull()
                 refusjonsutfallId shouldNotBe null
                 bucketStorage.pdfer[refusjonsutfallId] shouldBe pdfBytes
+
+                coVerify(exactly = 1) { arkivService.arkiver(any(), refusjonsutfallId!!, ARBEIDSGIVER_NAVN, pdfBytes) }
 
                 val sendt = mockProducer.history()
                 sendt shouldHaveSize 1
@@ -101,6 +108,7 @@ class VedtakRoutesTest :
                         sykepengegrunnlag = 154999.92,
                         utfallTilArbeidsgiver = Utfall.INNVILGELSE,
                         fattetTidspunkt = LocalDateTime.parse("2026-08-05T13:03:25.166498222"),
+                        journalpostId = JOURNALPOST_ID,
                         arbeidsgiverNavn = ARBEIDSGIVER_NAVN,
                         sykmeldtNavn = SYKMELDT_NAVN,
                     )
@@ -118,6 +126,7 @@ class VedtakRoutesTest :
                         RefusjonProducer(mockProducer, TEST_TOPIC),
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
+                        arkivServiceMock(),
                     )
                 }
 
@@ -128,6 +137,38 @@ class VedtakRoutesTest :
                     }
 
                 response.status shouldBe HttpStatusCode.InternalServerError
+                mockProducer.history().shouldBeEmpty()
+            }
+        }
+
+        test("POST /arbeidstaker-vedtak svarer Internal Server Error og publiserer ingenting når arkivering feiler") {
+            val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+            val arkivService =
+                mockk<ArkivService> {
+                    coEvery { arkiver(any(), any(), any(), any()) } throws RuntimeException("dokarkiv nede")
+                }
+
+            testApplication {
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer, TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        pdlServiceMock(),
+                        arkivService,
+                    )
+                }
+
+                val response =
+                    client.post("/arbeidstaker-vedtak") {
+                        contentType(ContentType.Application.Json)
+                        setBody(gyldigMelding(FNR, ORGNR))
+                    }
+
+                response.status shouldBe HttpStatusCode.InternalServerError
+                bucketStorage.pdfer.size shouldBe 1
                 mockProducer.history().shouldBeEmpty()
             }
         }
@@ -143,6 +184,7 @@ class VedtakRoutesTest :
                         RefusjonProducer(mockProducer, TEST_TOPIC),
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
+                        arkivServiceMock(),
                     )
                 }
 
@@ -170,6 +212,7 @@ class VedtakRoutesTest :
                         RefusjonProducer(mockProducer, TEST_TOPIC),
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
+                        arkivServiceMock(),
                     )
                 }
 
@@ -197,6 +240,7 @@ class VedtakRoutesTest :
                         RefusjonProducer(mockProducer, TEST_TOPIC),
                         virksomhetsnavnKlientMock(navn = null),
                         pdlServiceMock(),
+                        arkivServiceMock(),
                     )
                 }
 
@@ -222,7 +266,15 @@ class VedtakRoutesTest :
                 }
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), klient, pdlServiceMock()) }
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer, TEST_TOPIC),
+                        klient,
+                        pdlServiceMock(),
+                        arkivServiceMock(),
+                    )
+                }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -248,6 +300,7 @@ class VedtakRoutesTest :
                         RefusjonProducer(mockProducer, TEST_TOPIC),
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(navn = null),
+                        arkivServiceMock(),
                     )
                 }
 
@@ -273,7 +326,15 @@ class VedtakRoutesTest :
                 }
 
             testApplication {
-                application { module(bucketStorage, RefusjonProducer(mockProducer, TEST_TOPIC), virksomhetsnavnKlientMock(), klient) }
+                application {
+                    module(
+                        bucketStorage,
+                        RefusjonProducer(mockProducer, TEST_TOPIC),
+                        virksomhetsnavnKlientMock(),
+                        klient,
+                        arkivServiceMock(),
+                    )
+                }
 
                 val response =
                     client.post("/arbeidstaker-vedtak") {
@@ -298,6 +359,7 @@ class VedtakRoutesTest :
                         RefusjonProducer(mockProducer(), TEST_TOPIC),
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
+                        arkivServiceMock(),
                     )
                 }
 
@@ -318,6 +380,7 @@ class VedtakRoutesTest :
                         RefusjonProducer(mockProducer(), TEST_TOPIC),
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
+                        arkivServiceMock(),
                     )
                 }
 
@@ -335,6 +398,7 @@ class VedtakRoutesTest :
                         RefusjonProducer(mockProducer(), TEST_TOPIC),
                         virksomhetsnavnKlientMock(),
                         pdlServiceMock(),
+                        arkivServiceMock(),
                     )
                 }
 
@@ -353,6 +417,11 @@ private fun virksomhetsnavnKlientMock(navn: String? = ARBEIDSGIVER_NAVN): Virkso
 private fun pdlServiceMock(navn: String? = SYKMELDT_NAVN): PdlService =
     mockk {
         coEvery { hentSykmeldtnavn(FNR) } returns navn
+    }
+
+private fun arkivServiceMock(): ArkivService =
+    mockk {
+        coEvery { arkiver(any(), any(), any(), any()) } returns JOURNALPOST_ID
     }
 
 private fun mockPdfgen(

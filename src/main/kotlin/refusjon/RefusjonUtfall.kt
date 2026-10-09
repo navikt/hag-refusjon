@@ -24,6 +24,7 @@ data class RefusjonUtfall(
     val sykepengegrunnlag: Double,
     val utfallTilArbeidsgiver: Utfall,
     val fattetTidspunkt: LocalDateTime,
+    val journalpostId: String,
     val sykmeldtNavn: String? = null,
     val arbeidsgiverNavn: String? = null,
 )
@@ -39,6 +40,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
     refusjonsutfallId: UUID,
     arbeidsgiverNavn: String,
     sykmeldtNavn: String,
+    journalpostId: String,
 ): RefusjonUtfall =
     RefusjonUtfall(
         refusjonUtfallId = refusjonsutfallId,
@@ -55,6 +57,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
                 VedtaksUtfall.INNVILGELSE -> Utfall.INNVILGELSE
             },
         fattetTidspunkt = vedtakFattetTidspunkt,
+        journalpostId = journalpostId,
         sykmeldtNavn = sykmeldtNavn,
         arbeidsgiverNavn = arbeidsgiverNavn,
     )

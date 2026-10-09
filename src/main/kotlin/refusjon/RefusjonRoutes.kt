@@ -7,6 +7,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.person.PdlService
@@ -25,6 +26,7 @@ fun Route.refusjonRoutes(
     refusjonProducer: RefusjonProducer,
     virksomhetsnavnKlient: VirksomhetsnavnKlient,
     pdlService: PdlService,
+    arkivService: ArkivService,
 ) {
     // midlertidlig mottak POST route fra LPS API (bytter til å motta direkte fra SAS i fremtiden)
     post("/arbeidstaker-vedtak") {
@@ -69,25 +71,47 @@ fun Route.refusjonRoutes(
                 return@post
             }
 
-        try {
-            val pdf = genererRefusjonPdf(melding.tilRefusjonUtfallPdfData(arbeidsgiverNavn, sykmeldtNavn))
-            bucketStorage.lagrePdf(refusjonUtfallId, pdf)
-        } catch (e: Exception) {
-            "Feil ved generering eller lagring av PDF for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
-                .also {
-                    logger.error(it)
-                    sikkerLogger().error(it, e)
-                }
-            call.respond(HttpStatusCode.InternalServerError, "Feil ved lagring av refusjonsutfall")
-            return@post
-        }
+        val pdf =
+            try {
+                val generertPdf = genererRefusjonPdf(melding.tilRefusjonUtfallPdfData(arbeidsgiverNavn, sykmeldtNavn))
+                bucketStorage.lagrePdf(refusjonUtfallId, generertPdf)
+                generertPdf
+            } catch (e: Exception) {
+                "Feil ved generering eller lagring av PDF for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
+                    .also {
+                        logger.error(it)
+                        sikkerLogger().error(it, e)
+                    }
+                call.respond(HttpStatusCode.InternalServerError, "Feil ved lagring av refusjonsutfall")
+                return@post
+            }
 
         logger.info(
             "Lagret PDF for refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
         )
 
+        val journalpostId =
+            try {
+                arkivService.arkiver(melding, refusjonUtfallId, arbeidsgiverNavn, pdf)
+            } catch (e: Exception) {
+                "Feil ved arkivering av refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
+                    .also {
+                        logger.error(it)
+                        sikkerLogger().error(it, e)
+                    }
+                call.respond(HttpStatusCode.InternalServerError, "Feil ved arkivering av refusjonsutfall")
+                return@post
+            }
+
+        logger.info(
+            "Arkiverte refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId} i journalpost $journalpostId.",
+        )
+
         try {
-            refusjonProducer.send(melding.vedtaksperiodeId, melding.tilRefusjonUtfall(refusjonUtfallId, arbeidsgiverNavn, sykmeldtNavn))
+            refusjonProducer.send(
+                melding.vedtaksperiodeId,
+                melding.tilRefusjonUtfall(refusjonUtfallId, arbeidsgiverNavn, sykmeldtNavn, journalpostId),
+            )
         } catch (e: Exception) {
             "Feil ved publisering av refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
                 .also {

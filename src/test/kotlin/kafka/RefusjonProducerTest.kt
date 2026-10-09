@@ -30,6 +30,7 @@ class RefusjonProducerTest :
                 sykepengegrunnlag = 154999.92,
                 utfallTilArbeidsgiver = Utfall.INNVILGELSE,
                 fattetTidspunkt = LocalDateTime.of(2026, 8, 5, 13, 3, 25),
+                journalpostId = "123456789",
             )
 
         test("sender refusjonsutfall til riktig topic med vedtaksperiodeId som key") {
