@@ -21,7 +21,8 @@ import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.utils.cache.LocalCache
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.pipe.orDefault
-import no.nav.helsearbeidsgiver.vedtak.refusjonRoutes
+import no.nav.helsearbeidsgiver.vedtak.pdfRoutes
+import no.nav.helsearbeidsgiver.vedtak.vedtakRoutes
 import no.nav.helsearbeidsgiver.virksomhet.BrregVirksomhetsnavnKlient
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -80,6 +81,7 @@ fun Application.module(
         get("/hello") {
             call.respondText("Hello World!")
         }
-        refusjonRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService)
+        vedtakRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService)
+        pdfRoutes(bucketStorage)
     }
 }
