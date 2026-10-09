@@ -8,6 +8,7 @@ import no.nav.helsearbeidsgiver.dokarkiv.domene.DokumentVariant
 import no.nav.helsearbeidsgiver.dokarkiv.domene.GjelderPerson
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Journalposttype
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Kanal
+import no.nav.helsearbeidsgiver.dokarkiv.domene.Mottaker
 import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakMelding
 import java.time.LocalDate
 import java.util.Base64
@@ -36,7 +37,7 @@ class ArkivService(
             .opprettOgFerdigstillJournalpostUtgaaende(
                 tittel = TITTEL,
                 gjelderPerson = GjelderPerson(melding.foedselsnummer.verdi),
-                avsender = Avsender.Organisasjon(orgnr = melding.organisasjonsnummer.verdi, navn = arbeidsgiverNavn),
+                mottaker = Mottaker.Organisasjon(orgnr = melding.organisasjonsnummer.verdi, navn = arbeidsgiverNavn),
                 dokumenter =
                     listOf(
                         Dokument(
@@ -48,7 +49,7 @@ class ArkivService(
                                         filtype = "PDFA",
                                         fysiskDokument = Base64.getEncoder().encodeToString(pdf),
                                         variantFormat = "ARKIV",
-                                        filnavn = "refusjonsutfall-$refusjonUtfallId.pdf",
+                                        filnavn = "refusjon-$refusjonUtfallId.pdf",
                                     ),
                                 ),
                         ),

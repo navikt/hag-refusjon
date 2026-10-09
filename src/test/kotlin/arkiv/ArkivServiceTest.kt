@@ -6,12 +6,11 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.slot
 import no.nav.helsearbeidsgiver.dokarkiv.DokArkivClient
-import no.nav.helsearbeidsgiver.dokarkiv.domene.Avsender
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Dokument
 import no.nav.helsearbeidsgiver.dokarkiv.domene.DokumentVariant
 import no.nav.helsearbeidsgiver.dokarkiv.domene.GjelderPerson
-import no.nav.helsearbeidsgiver.dokarkiv.domene.Journalposttype
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Kanal
+import no.nav.helsearbeidsgiver.dokarkiv.domene.Mottaker
 import no.nav.helsearbeidsgiver.dokarkiv.domene.OpprettOgFerdigstillResponse
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
@@ -33,7 +32,7 @@ class ArkivServiceTest :
             val refusjonUtfallId = UUID.randomUUID()
             val pdf = "PDF innhold".toByteArray()
 
-            val avsender = slot<Avsender>()
+            val mottaker = slot<Mottaker>()
             val dokumenter = slot<List<Dokument>>()
             val eksternReferanseId = slot<String>()
             val kanal = slot<Kanal>()
@@ -44,7 +43,7 @@ class ArkivServiceTest :
                         opprettOgFerdigstillJournalpostUtgaaende(
                             tittel = "Refusjon av sykepenger til arbeidsgiver",
                             gjelderPerson = GjelderPerson(fnr.verdi),
-                            avsender = capture(avsender),
+                            mottaker = capture(mottaker),
                             dokumenter = capture(dokumenter),
                             eksternReferanseId = capture(eksternReferanseId),
                             callId = any(),
@@ -68,7 +67,7 @@ class ArkivServiceTest :
                 )
 
             journalpostId shouldBe "123456789"
-            avsender.captured shouldBe Avsender.Organisasjon(orgnr = orgnr.verdi, navn = "Billys Bollefabrikk AS")
+            mottaker.captured shouldBe Mottaker.Organisasjon(orgnr = orgnr.verdi, navn = "Billys Bollefabrikk AS")
             eksternReferanseId.captured shouldBe refusjonUtfallId.toString()
             kanal.captured shouldBe Kanal.ALTINN
             dokumenter.captured shouldBe
@@ -82,7 +81,7 @@ class ArkivServiceTest :
                                     filtype = "PDFA",
                                     fysiskDokument = Base64.getEncoder().encodeToString(pdf),
                                     variantFormat = "ARKIV",
-                                    filnavn = "refusjonsutfall-$refusjonUtfallId.pdf",
+                                    filnavn = "refusjon-$refusjonUtfallId.pdf",
                                 ),
                             ),
                     ),
