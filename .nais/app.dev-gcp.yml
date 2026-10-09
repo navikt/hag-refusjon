@@ -4,6 +4,8 @@ spec:
       external:
         - host: pdl-api.dev-fss-pub.nais.io
         - host: dokarkiv-q2.dev-fss-pub.nais.io
+        - host: data.ppe.brreg.no
+
   kafka:
     pool: nav-dev
   gcp:
@@ -11,6 +13,8 @@ spec:
       - name: helsearbeidsgiver-refusjon-dev
         #retentionPeriodDays: 1
   env:
+    - name: BRREG_URL
+      value: "https://data.ppe.brreg.no/enhetsregisteret/api/underenheter"
     - name: GCP_BUCKET_NAME
       value: helsearbeidsgiver-refusjon-dev
     - name: PDL_URL

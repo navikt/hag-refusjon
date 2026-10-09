@@ -12,12 +12,3 @@ class BrregVirksomhetsnavnKlient(
 ) : VirksomhetsnavnKlient {
     override suspend fun hentVirksomhetsnavn(orgnr: Orgnr): String? = brregClient.hentOrganisasjonNavn(setOf(orgnr.verdi))[orgnr]
 }
-
-// Våre testorganisasjoner finnes ikke i Brreg sitt testmiljø, så i dev hardkodes virksomhetsnavnet i stedet for å hentes fra Brreg.
-class DevVirksomhetsnavnKlient : VirksomhetsnavnKlient {
-    override suspend fun hentVirksomhetsnavn(orgnr: Orgnr): String = DEV_VIRKSOMHETSNAVN
-
-    companion object {
-        const val DEV_VIRKSOMHETSNAVN = "Sindig Alvevennlig Radagast AS"
-    }
-}

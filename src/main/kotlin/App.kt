@@ -10,7 +10,6 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import no.nav.helsearbeidsgiver.Env.getPropertyOrNull
-import no.nav.helsearbeidsgiver.Env.isDev
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.brreg.BrregClient
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
@@ -24,7 +23,6 @@ import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.pipe.orDefault
 import no.nav.helsearbeidsgiver.vedtak.refusjonRoutes
 import no.nav.helsearbeidsgiver.virksomhet.BrregVirksomhetsnavnKlient
-import no.nav.helsearbeidsgiver.virksomhet.DevVirksomhetsnavnKlient
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.slf4j.LoggerFactory
@@ -42,16 +40,12 @@ fun main() {
             topic = getPropertyOrNull("KAFKA_TOPIC_REFUSJON").orDefault { throw RuntimeException("KAFKA_TOPIC_REFUSJON ikke satt") },
         )
     val virksomhetsnavnKlient =
-        if (isDev()) {
-            DevVirksomhetsnavnKlient()
-        } else {
-            BrregVirksomhetsnavnKlient(
-                BrregClient(
-                    url = getPropertyOrNull("BRREG_URL").orDefault { throw RuntimeException("BRREG_URL ikke satt") },
-                    cacheConfig = LocalCache.Config(entryDuration = 1.days, maxEntries = 1_000),
-                ),
-            )
-        }
+        BrregVirksomhetsnavnKlient(
+            BrregClient(
+                url = getPropertyOrNull("BRREG_URL").orDefault { throw RuntimeException("BRREG_URL ikke satt") },
+                cacheConfig = LocalCache.Config(entryDuration = 1.days, maxEntries = 1_000),
+            ),
+        )
     val pdlService =
         PdlService(
             url = getPropertyOrNull("PDL_URL").orDefault { throw RuntimeException("PDL_URL ikke satt") },

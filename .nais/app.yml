@@ -51,8 +51,6 @@ spec:
     application:
       enabled: true
   env:
-    - name: BRREG_URL
-      value: "https://data.brreg.no/enhetsregisteret/api/underenheter"
     - name: KAFKA_TOPIC_REFUSJON
       value: helsearbeidsgiver.refusjon
     - name: PDFGEN_REFUSJON_URL

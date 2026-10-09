@@ -35,10 +35,4 @@ class VirksomhetsnavnKlientTest :
                 BrregVirksomhetsnavnKlient(brregClient).hentVirksomhetsnavn(ORGNR).shouldBeNull()
             }
         }
-
-        context("DevVirksomhetsnavnKlient") {
-            test("gir hardkodet virksomhetsnavn") {
-                DevVirksomhetsnavnKlient().hentVirksomhetsnavn(ORGNR) shouldBe DevVirksomhetsnavnKlient.DEV_VIRKSOMHETSNAVN
-            }
-        }
     })

@@ -28,6 +28,7 @@ data class RefusjonUtfallPdfData(
     @SerialName("skjæringstidspunkt") val skjaeringstidspunkt: LocalDate,
     val sykepengegrunnlag: Double,
     val utbetalingsdager: List<Utbetalingsdag>,
+    val utbetaltTilArbeidsgiver: Int,
     val vedtakFattetTidspunkt: LocalDateTime,
     val vedtaksUtfallTilArbeidsgiver: VedtaksUtfall,
     val saksbehandlerIdent: String?,
@@ -54,6 +55,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfallPdfData(
         skjaeringstidspunkt = skjaeringstidspunkt,
         sykepengegrunnlag = sykepengegrunnlag,
         utbetalingsdager = utbetalingsdager,
+        utbetaltTilArbeidsgiver = utbetalingsdager.summerBeloepTilArbeidsgiver(),
         vedtakFattetTidspunkt = vedtakFattetTidspunkt,
         vedtaksUtfallTilArbeidsgiver = vedtaksUtfallTilArbeidsgiver,
         saksbehandlerIdent = saksbehandlerIdent,
@@ -63,3 +65,5 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfallPdfData(
         automatiskFattet = automatiskFattet,
         harArbeidsgiverOensketRefusjon = harArbeidsgiverOensketRefusjon,
     )
+
+private fun List<Utbetalingsdag>.summerBeloepTilArbeidsgiver(): Int = sumOf { it.beloepTilArbeidsgiver }
