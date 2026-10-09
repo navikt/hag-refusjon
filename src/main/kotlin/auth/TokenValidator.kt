@@ -16,7 +16,6 @@ interface TokenValidator {
     suspend fun valider(token: String): JsonObject?
 }
 
-// Inneholder alle claims fra tokenet, slik at f.eks. azp kan sjekkes senere.
 data class TokenPrincipal(
     val claims: JsonObject,
 )
