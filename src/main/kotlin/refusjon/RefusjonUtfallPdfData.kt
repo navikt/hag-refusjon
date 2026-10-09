@@ -66,4 +66,4 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfallPdfData(
         harArbeidsgiverOensketRefusjon = harArbeidsgiverOensketRefusjon,
     )
 
-private fun List<Utbetalingsdag>.summerUtbetaltTilArbeidsgiver(): Int = sumOf { it.beloepTilArbeidsgiver }
+private fun List<Utbetalingsdag>.summerBeloepTilArbeidsgiver(): Int = sumOf { it.beloepTilArbeidsgiver }
