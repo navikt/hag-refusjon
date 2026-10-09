@@ -55,7 +55,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfallPdfData(
         skjaeringstidspunkt = skjaeringstidspunkt,
         sykepengegrunnlag = sykepengegrunnlag,
         utbetalingsdager = utbetalingsdager,
-        utbetaltTilArbeidsgiver = utbetalingsdager.summerUtbetaltTilArbeidsgiver(),
+        utbetaltTilArbeidsgiver = utbetalingsdager.summerBeloepTilArbeidsgiver(),
         vedtakFattetTidspunkt = vedtakFattetTidspunkt,
         vedtaksUtfallTilArbeidsgiver = vedtaksUtfallTilArbeidsgiver,
         saksbehandlerIdent = saksbehandlerIdent,
