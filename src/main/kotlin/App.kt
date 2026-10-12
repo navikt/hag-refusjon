@@ -13,6 +13,7 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import no.nav.helsearbeidsgiver.Env.getPropertyOrNull
+import no.nav.helsearbeidsgiver.Env.isDev
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.auth.TexasTokenValidator
 import no.nav.helsearbeidsgiver.auth.TokenPrincipal
@@ -32,6 +33,7 @@ import no.nav.helsearbeidsgiver.vedtak.pdfRoutes
 import no.nav.helsearbeidsgiver.vedtak.vedtakRoutes
 import no.nav.helsearbeidsgiver.virksomhet.BrregVirksomhetsnavnKlient
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
+import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlientMedFallback
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.slf4j.LoggerFactory
 import kotlin.time.Duration.Companion.days
@@ -47,13 +49,19 @@ fun main() {
             kafkaProducer = KafkaProducer(createKafkaProducerConfig(producerName = "refusjon-producer")),
             topic = getPropertyOrNull("KAFKA_TOPIC_REFUSJON").orDefault { throw RuntimeException("KAFKA_TOPIC_REFUSJON ikke satt") },
         )
-    val virksomhetsnavnKlient =
+    val brregVirksomhetsnavnKlient =
         BrregVirksomhetsnavnKlient(
             BrregClient(
                 url = getPropertyOrNull("BRREG_URL").orDefault { throw RuntimeException("BRREG_URL ikke satt") },
                 cacheConfig = LocalCache.Config(entryDuration = 1.days, maxEntries = 1_000),
             ),
         )
+    val virksomhetsnavnKlient: VirksomhetsnavnKlient =
+        if (isDev()) {
+            VirksomhetsnavnKlientMedFallback(brregVirksomhetsnavnKlient)
+        } else {
+            brregVirksomhetsnavnKlient
+        }
     val pdlService =
         PdlService(
             url = getPropertyOrNull("PDL_URL").orDefault { throw RuntimeException("PDL_URL ikke satt") },
