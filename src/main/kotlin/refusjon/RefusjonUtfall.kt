@@ -27,6 +27,7 @@ data class RefusjonUtfall(
     val journalpostId: String,
     val sykmeldtNavn: String? = null,
     val arbeidsgiverNavn: String? = null,
+    val arbeidstakerVedtakMelding: ArbeidstakerVedtakMelding,
 )
 
 @Serializable
@@ -60,4 +61,5 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
         journalpostId = journalpostId,
         sykmeldtNavn = sykmeldtNavn,
         arbeidsgiverNavn = arbeidsgiverNavn,
+        arbeidstakerVedtakMelding = this,
     )

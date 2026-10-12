@@ -15,10 +15,7 @@ import no.nav.helsearbeidsgiver.dokarkiv.domene.OpprettOgFerdigstillResponse
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
-import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakMelding
-import no.nav.helsearbeidsgiver.vedtak.SisEventName
-import no.nav.helsearbeidsgiver.vedtak.VedtaksUtfall
-import no.nav.helsearbeidsgiver.vedtak.Yrkesaktivitetstype
+import no.nav.helsearbeidsgiver.vedtak.arbeidstakerVedtakMeldingMock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.Base64
@@ -60,7 +57,7 @@ class ArkivServiceTest :
 
             val journalpostId =
                 ArkivService(dokArkivClient).arkiver(
-                    melding = melding(fnr, orgnr),
+                    melding = arbeidstakerVedtakMeldingMock(fnr, orgnr),
                     refusjonUtfallId = refusjonUtfallId,
                     arbeidsgiverNavn = "Billys Bollefabrikk AS",
                     pdf = pdf,
@@ -88,28 +85,3 @@ class ArkivServiceTest :
                 )
         }
     })
-
-private fun melding(
-    fnr: Fnr,
-    orgnr: Orgnr,
-): ArbeidstakerVedtakMelding =
-    ArbeidstakerVedtakMelding(
-        eventName = SisEventName.VEDTAK_FATTET,
-        foedselsnummer = fnr,
-        yrkesaktivitetstype = Yrkesaktivitetstype.ARBEIDSTAKER,
-        organisasjonsnummer = orgnr,
-        vedtaksperiodeId = UUID.randomUUID(),
-        fom = LocalDate.of(2026, 7, 28),
-        tom = LocalDate.of(2026, 8, 3),
-        skjaeringstidspunkt = LocalDate.of(2026, 7, 1),
-        dokumenter = emptyList(),
-        sykepengegrunnlag = 154999.92,
-        vedtakFattetTidspunkt = LocalDateTime.of(2026, 8, 5, 13, 3, 25),
-        vedtaksUtfallTilArbeidsgiver = VedtaksUtfall.INNVILGELSE,
-        saksbehandlerIdent = null,
-        saksbehandlerNavn = null,
-        beslutterIdent = null,
-        beslutterNavn = null,
-        automatiskFattet = true,
-        harArbeidsgiverOensketRefusjon = true,
-    )
