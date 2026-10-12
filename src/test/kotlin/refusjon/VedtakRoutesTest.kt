@@ -115,6 +115,7 @@ class VedtakRoutesTest :
                         journalpostId = JOURNALPOST_ID,
                         arbeidsgiverNavn = ARBEIDSGIVER_NAVN,
                         sykmeldtNavn = SYKMELDT_NAVN,
+                        kafkaMelding = gyldigMelding(FNR, ORGNR).parseJson().fromJson(ArbeidstakerVedtakMelding.serializer()),
                     )
             }
         }

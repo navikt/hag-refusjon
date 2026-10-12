@@ -12,6 +12,7 @@ import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import no.nav.helsearbeidsgiver.vedtak.RefusjonUtfall
 import no.nav.helsearbeidsgiver.vedtak.Utfall
+import no.nav.helsearbeidsgiver.vedtak.arbeidstakerVedtakMeldingMock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
@@ -31,6 +32,7 @@ class RefusjonProducerTest :
                 utfallTilArbeidsgiver = Utfall.INNVILGELSE,
                 fattetTidspunkt = LocalDateTime.of(2026, 8, 5, 13, 3, 25),
                 journalpostId = "123456789",
+                kafkaMelding = arbeidstakerVedtakMeldingMock(Fnr.genererGyldig(), Orgnr("896929119")),
             )
 
         test("sender refusjonsutfall til riktig topic med vedtaksperiodeId som key") {
