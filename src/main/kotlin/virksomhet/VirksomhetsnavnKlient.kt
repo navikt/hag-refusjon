@@ -21,6 +21,6 @@ class VirksomhetsnavnKlientMedFallback(
     override suspend fun hentVirksomhetsnavn(orgnr: Orgnr): String = opprinneligKlient.hentVirksomhetsnavn(orgnr) ?: fallback
 
     companion object {
-        const val UKJENT_VIRKSOMHETSNAVN = "Ukjent Virksomhetsnavn"
+        const val UKJENT_VIRKSOMHETSNAVN = "UKJENT VIRKSOMHET"
     }
 }
