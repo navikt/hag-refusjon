@@ -12,6 +12,7 @@ import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import no.nav.helsearbeidsgiver.vedtak.RefusjonUtfall
 import no.nav.helsearbeidsgiver.vedtak.Utfall
+import no.nav.helsearbeidsgiver.vedtak.arbeidstakerVedtakMeldingMock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
@@ -19,18 +20,21 @@ import java.util.UUID
 class RefusjonProducerTest :
     FunSpec({
         val vedtaksperiodeId = UUID.randomUUID()
+        val fnr = Fnr.genererGyldig()
+        val orgnr = Orgnr.genererGyldig()
         val refusjonUtfall =
             RefusjonUtfall(
                 refusjonUtfallId = UUID.randomUUID(),
                 vedtaksperiodeId = vedtaksperiodeId,
-                fnr = Fnr.genererGyldig(),
-                orgnr = Orgnr("896929119"),
+                fnr = fnr,
+                orgnr = orgnr,
                 fom = LocalDate.of(2026, 7, 28),
                 tom = LocalDate.of(2026, 8, 3),
                 sykepengegrunnlag = 154999.92,
                 utfallTilArbeidsgiver = Utfall.INNVILGELSE,
                 fattetTidspunkt = LocalDateTime.of(2026, 8, 5, 13, 3, 25),
                 journalpostId = "123456789",
+                arbeidstakerVedtakMelding = arbeidstakerVedtakMeldingMock(fnr, orgnr),
             )
 
         test("sender refusjonsutfall til riktig topic med vedtaksperiodeId som key") {
