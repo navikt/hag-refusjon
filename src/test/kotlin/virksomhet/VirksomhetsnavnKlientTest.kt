@@ -35,4 +35,25 @@ class VirksomhetsnavnKlientTest :
                 BrregVirksomhetsnavnKlient(brregClient).hentVirksomhetsnavn(ORGNR).shouldBeNull()
             }
         }
+
+        context("FallbackVirksomhetsnavnKlient") {
+            test("gir virksomhetsnavn fra opprinnelig klient når det finnes") {
+                val opprinneligKlient =
+                    mockk<VirksomhetsnavnKlient> {
+                        coEvery { hentVirksomhetsnavn(ORGNR) } returns VIRKSOMHETSNAVN
+                    }
+
+                VirksomhetsnavnKlientMedFallback(opprinneligKlient).hentVirksomhetsnavn(ORGNR) shouldBe VIRKSOMHETSNAVN
+            }
+
+            test("gir fallback-navn når opprinnelig klient ikke har treff") {
+                val opprinneligKlient =
+                    mockk<VirksomhetsnavnKlient> {
+                        coEvery { hentVirksomhetsnavn(ORGNR) } returns null
+                    }
+
+                VirksomhetsnavnKlientMedFallback(opprinneligKlient).hentVirksomhetsnavn(ORGNR) shouldBe
+                    VirksomhetsnavnKlientMedFallback.UKJENT_VIRKSOMHETSNAVN
+            }
+        }
     })
