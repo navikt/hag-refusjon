@@ -20,19 +20,21 @@ import java.util.UUID
 class RefusjonProducerTest :
     FunSpec({
         val vedtaksperiodeId = UUID.randomUUID()
+        val fnr = Fnr.genererGyldig()
+        val orgnr = Orgnr.genererGyldig()
         val refusjonUtfall =
             RefusjonUtfall(
                 refusjonUtfallId = UUID.randomUUID(),
                 vedtaksperiodeId = vedtaksperiodeId,
-                fnr = Fnr.genererGyldig(),
-                orgnr = Orgnr("896929119"),
+                fnr = fnr,
+                orgnr = orgnr,
                 fom = LocalDate.of(2026, 7, 28),
                 tom = LocalDate.of(2026, 8, 3),
                 sykepengegrunnlag = 154999.92,
                 utfallTilArbeidsgiver = Utfall.INNVILGELSE,
                 fattetTidspunkt = LocalDateTime.of(2026, 8, 5, 13, 3, 25),
                 journalpostId = "123456789",
-                kafkaMelding = arbeidstakerVedtakMeldingMock(Fnr.genererGyldig(), Orgnr("896929119")),
+                kafkaMelding = arbeidstakerVedtakMeldingMock(fnr, orgnr),
             )
 
         test("sender refusjonsutfall til riktig topic med vedtaksperiodeId som key") {
