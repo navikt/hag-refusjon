@@ -116,6 +116,15 @@ enum class Utbetalingsdagtype {
     @SerialName("Ventetidsdag")
     VENTETIDSDAG,
 
+    @SerialName("Permisjonsdag")
+    PERMISJONSDAG,
+
+    @SerialName("ArbeidIkkeGjenopptattDag")
+    ARBEID_IKKE_GJENOPPTATT_DAG,
+
+    @SerialName("AndreYtelser")
+    ANDRE_YTELSER,
+
     @SerialName("UkjentDag")
     UKJENT_DAG,
 }
