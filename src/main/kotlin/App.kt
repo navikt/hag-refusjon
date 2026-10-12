@@ -31,8 +31,8 @@ import no.nav.helsearbeidsgiver.utils.pipe.orDefault
 import no.nav.helsearbeidsgiver.vedtak.pdfRoutes
 import no.nav.helsearbeidsgiver.vedtak.vedtakRoutes
 import no.nav.helsearbeidsgiver.virksomhet.BrregVirksomhetsnavnKlient
-import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlientMedFallback
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
+import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlientMedFallback
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.slf4j.LoggerFactory
 import kotlin.time.Duration.Companion.days
