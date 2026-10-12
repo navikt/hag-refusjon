@@ -63,5 +63,8 @@ fun parsePreAutoriserteKlientIder(json: String): Set<String> =
     json
         .parseJson()
         .jsonArray
-        .map { it.jsonObject.getValue("clientId").jsonPrimitive.content }
-        .toSet()
+        .map {
+            it.jsonObject
+                .getValue("clientId")
+                .jsonPrimitive.content
+        }.toSet()
