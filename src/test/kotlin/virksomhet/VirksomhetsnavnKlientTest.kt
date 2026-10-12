@@ -52,7 +52,7 @@ class VirksomhetsnavnKlientTest :
                         coEvery { hentVirksomhetsnavn(ORGNR) } returns null
                     }
 
-                VirksomhetsnavnKlientMedFallback(opprinneligKlient).hentVirksomhetsnavn(ORGNR) shouldBe "UKJENT VIRKSOMHET"
+                VirksomhetsnavnKlientMedFallback(opprinneligKlient).hentVirksomhetsnavn(ORGNR) shouldBe VirksomhetsnavnKlientMedFallback.UKJENT_VIRKSOMHETSNAVN
             }
         }
     })
