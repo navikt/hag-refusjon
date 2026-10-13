@@ -106,7 +106,7 @@ object UtbetalingsdagtypeSerializer : KSerializer<Utbetalingsdagtype> {
     override fun deserialize(decoder: Decoder): Utbetalingsdagtype {
         val navn = decoder.decodeString()
         return dagtypePerNavn[navn] ?: Utbetalingsdagtype.UKJENT_DAG.also {
-            logger.warn("Ukjent utbetalingsdagtype '$navn', bruker UKJENT_DAG")
+            logger.warn("Mottok ukjent utbetalingsdagtype '$navn' i arbeidstakervedtak på tbd.sis, bruker UKJENT_DAG")
         }
     }
 }
