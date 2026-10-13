@@ -11,7 +11,7 @@ class SisTolker {
     private val sikkerLogger = sikkerLogger()
 
     fun lesMelding(melding: String): ArbeidstakerVedtakMelding? {
-        // Meldinger uten eventName er behandlingstatus
+        // Meldinger uten eventName er behandlingstatus-meldinger som vi ikke er interessert i.
         if (melding.fromJson(EventNameWrapper.serializer()).eventName != SisEventName.VEDTAK_FATTET) return null
 
         val vedtak = melding.fromJson(ArbeidstakerVedtakMelding.serializer())
