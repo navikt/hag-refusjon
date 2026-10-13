@@ -23,6 +23,10 @@ import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
 import no.nav.helsearbeidsgiver.helsesjekker.naisRoutes
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
+import no.nav.helsearbeidsgiver.kafka.SisConsumer
+import no.nav.helsearbeidsgiver.kafka.SisTolker
+import no.nav.helsearbeidsgiver.kafka.configureSisConsumer
+import no.nav.helsearbeidsgiver.kafka.createKafkaConsumerConfig
 import no.nav.helsearbeidsgiver.kafka.createKafkaProducerConfig
 import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.utils.cache.LocalCache
@@ -33,6 +37,7 @@ import no.nav.helsearbeidsgiver.vedtak.vedtakRoutes
 import no.nav.helsearbeidsgiver.virksomhet.BrregVirksomhetsnavnKlient
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlientMedFallback
+import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.slf4j.LoggerFactory
 import kotlin.time.Duration.Companion.days
@@ -79,10 +84,28 @@ fun main() {
                 getPropertyOrNull("NAIS_TOKEN_INTROSPECTION_ENDPOINT")
                     .orDefault { throw RuntimeException("NAIS_TOKEN_INTROSPECTION_ENDPOINT ikke satt") },
         )
+    val sisConsumer =
+        SisConsumer(
+            consumer =
+                KafkaConsumer(
+                    createKafkaConsumerConfig(
+                        consumerName = "sis-consumer",
+                        groupId =
+                            getPropertyOrNull(
+                                "KAFKA_CONSUMER_GROUP_ID",
+                            ).orDefault { throw RuntimeException("KAFKA_CONSUMER_GROUP_ID ikke satt") },
+                    ),
+                ),
+            topic = getPropertyOrNull("KAFKA_TOPIC_SIS").orDefault { throw RuntimeException("KAFKA_TOPIC_SIS ikke satt") },
+            tolker = SisTolker(),
+        )
     embeddedServer(
         factory = Netty,
         port = 8080,
-        module = { module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService, tokenValidator) },
+        module = {
+            module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService, tokenValidator)
+            configureSisConsumer(sisConsumer)
+        },
     ).start(wait = true)
 }
 

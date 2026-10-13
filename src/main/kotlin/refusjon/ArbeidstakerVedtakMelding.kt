@@ -14,7 +14,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
 
-// Speiler VedtakArbeidsgiverMelding i sykepenger-im-lps-api. Feltnavn og @SerialName må holdes like.
 @Serializable
 data class ArbeidstakerVedtakMelding(
     val eventName: SisEventName,
@@ -104,6 +103,9 @@ enum class Utbetalingsdagtype {
     @SerialName("Feriedag")
     FERIEDAG,
 
+    @SerialName("Permisjonsdag")
+    PERMISJONSDAG,
+
     @SerialName("Arbeidsdag")
     ARBEIDSDAG,
 
@@ -115,6 +117,12 @@ enum class Utbetalingsdagtype {
 
     @SerialName("Ventetidsdag")
     VENTETIDSDAG,
+
+    @SerialName("ArbeidIkkeGjenopptattDag")
+    ARBEID_IKKE_GJENOPPTATT_DAG,
+
+    @SerialName("AndreYtelser")
+    ANDRE_YTELSER,
 
     @SerialName("UkjentDag")
     UKJENT_DAG,
