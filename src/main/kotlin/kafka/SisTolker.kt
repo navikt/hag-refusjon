@@ -12,10 +12,14 @@ class SisTolker {
 
     fun lesMelding(melding: String): ArbeidstakerVedtakMelding? {
         // Meldinger uten eventName er behandlingstatus-meldinger som vi ikke er interessert i.
-        if (melding.fromJson(EventNameWrapper.serializer()).eventName != SisEventName.VEDTAK_FATTET) return null
+        if (melding.fromJson(EventNameWrapper.serializer()).eventName != SisEventName.VEDTAK_FATTET) {
+            return null
+        }
 
         val vedtak = melding.fromJson(ArbeidstakerVedtakMelding.serializer())
-        if (vedtak.yrkesaktivitetstype != Yrkesaktivitetstype.ARBEIDSTAKER) return null
+        if (vedtak.yrkesaktivitetstype != Yrkesaktivitetstype.ARBEIDSTAKER) {
+            return null
+        }
 
         sikkerLogger.info("Leste arbeidstakervedtak: $vedtak")
         return vedtak
