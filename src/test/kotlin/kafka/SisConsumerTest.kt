@@ -41,30 +41,30 @@ class SisConsumerTest :
 
         fun vedtakJson(melding: ArbeidstakerVedtakMelding = vedtak) = melding.toJson(ArbeidstakerVedtakMelding.serializer()).toString()
 
-        test("tolker leser vedtak_fattet for arbeidstaker") {
+        test("leser vedtak for arbeidstakere") {
             tolker.lesMelding(vedtakJson()) shouldBe vedtak
         }
 
-        test("tolker ignorerer vedtak for andre yrkesaktivitetstyper") {
+        test("ignorerer vedtak for andre yrkesaktivitetstyper") {
             tolker.lesMelding(vedtakJson(vedtak.copy(yrkesaktivitetstype = Yrkesaktivitetstype.FRILANS))) shouldBe null
         }
 
-        test("tolker ignorerer andre yrkesaktivitetstyper før den leser arbeidstakerspesifikke felt") {
+        test("ignorerer vedtak for selvstendige uten å kreve felt for arbeidstakere") {
             tolker.lesMelding("""{"eventName":"vedtak_fattet","yrkesaktivitetstype":"SELVSTENDIG"}""") shouldBe null
         }
 
-        test("tolker avviser vedtak uten yrkesaktivitetstype") {
+        test("avviser vedtak uten yrkesaktivitetstype") {
             shouldThrow<IllegalArgumentException> {
                 tolker.lesMelding("""{"eventName":"vedtak_fattet"}""")
             }
         }
 
-        test("tolker ignorerer behandlingstatus, med og uten eventName") {
+        test("ignorerer meldinger om behandlingsstatus med og uten eventName") {
             tolker.lesMelding("""{"eventName":"behandlingstatus","status":"OPPRETTET"}""") shouldBe null
             tolker.lesMelding("""{"status":"OPPRETTET"}""") shouldBe null
         }
 
-        test("tolker mapper ukjent utbetalingsdagtype til UKJENT_DAG") {
+        test("bruker UKJENT_DAG for ukjente utbetalingsdagtyper") {
             val utbetalingsdag = Utbetalingsdag(LocalDate.of(2026, 7, 28), Utbetalingsdagtype.NAV_DAG, 1000)
             val json =
                 vedtakJson(vedtak.copy(utbetalingsdager = listOf(utbetalingsdag)))
@@ -86,7 +86,7 @@ class SisConsumerTest :
                 }
             }
 
-        test("consumer lagrer vedtak før den committer offset") {
+        test("lagrer vedtak før offset bekreftes") {
             val kafka = mockConsumer(vedtakJson())
             val repository = mockk<ArbeidstakerVedtakRepository>()
             every { repository.lagre(vedtak, topic, 0, 0L) } answers {
@@ -101,7 +101,7 @@ class SisConsumerTest :
             kafka.close()
         }
 
-        test("consumer ignorerer andre hendelser og nullverdier uten å lagre") {
+        test("hopper over irrelevante meldinger og nullverdier") {
             val kafka =
                 mockConsumer(
                     """{"status":"OPPRETTET"}""",
@@ -117,7 +117,7 @@ class SisConsumerTest :
             kafka.close()
         }
 
-        test("consumer stopper på ugyldig JSON uten å committe eller behandle neste melding") {
+        test("stopper ved ugyldig JSON uten å bekrefte offset") {
             val kafka = mockConsumer("ikke json", vedtakJson())
             val repository = mockk<ArbeidstakerVedtakRepository>()
 
@@ -130,7 +130,7 @@ class SisConsumerTest :
             kafka.close()
         }
 
-        test("consumer stopper på databasefeil uten å committe eller behandle neste melding") {
+        test("stopper ved databasefeil uten å bekrefte offset") {
             val kafka = mockConsumer(vedtakJson(), vedtakJson())
             val repository = mockk<ArbeidstakerVedtakRepository>()
             val failure = IllegalStateException("Databasen er utilgjengelig")
@@ -146,7 +146,7 @@ class SisConsumerTest :
             kafka.close()
         }
 
-        test("consumer lukker Kafka-klienten når polling feiler") {
+        test("lukker Kafka-klienten når henting av meldinger feiler") {
             val mockConsumer = MockConsumer<String, String>(OffsetResetStrategy.EARLIEST)
             val failure = KafkaException("Polling feilet")
             mockConsumer.setPollException(failure)
@@ -158,7 +158,7 @@ class SisConsumerTest :
             mockConsumer.closed() shouldBe true
         }
 
-        test("consumer lukker Kafka-klienten når commit feiler") {
+        test("lukker Kafka-klienten når bekreftelse av offset feiler") {
             val kafka =
                 object : MockConsumer<String, String>(OffsetResetStrategy.EARLIEST) {
                     override fun commitSync(): Unit = throw CommitFailedException("Rebalansering")
@@ -178,7 +178,7 @@ class SisConsumerTest :
             kafka.closed() shouldBe true
         }
 
-        test("consumer lukker Kafka-klienten ved kansellering") {
+        test("lukker Kafka-klienten ved kansellering") {
             val kafka = MockConsumer<String, String>(OffsetResetStrategy.EARLIEST)
             val polled = AtomicBoolean(false)
             kafka.schedulePollTask { polled.set(true) }

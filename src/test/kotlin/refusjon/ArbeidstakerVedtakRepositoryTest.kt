@@ -74,7 +74,7 @@ class ArbeidstakerVedtakRepositoryTest :
             postgres.stop()
         }
 
-        test("lagrer hele modellen som JSONB med søkefelt og refusjonUtfallId") {
+        test("lagrer vedtak som JSONB med søkefelt og refusjonUtfallId") {
             val id = repository.lagre(vedtak, topic, 0, 10L)
 
             val rad = rader().single()
@@ -95,7 +95,7 @@ class ArbeidstakerVedtakRepositoryTest :
             }
         }
 
-        test("redelivery beholder refusjonUtfallId, payload og opprettet") {
+        test("beholder ID, innhold og opprettelsestidspunkt når samme melding lagres på nytt") {
             val id = repository.lagre(vedtak, topic, 0, 10L)
             val foersteRad = rader().single()
 
@@ -106,7 +106,7 @@ class ArbeidstakerVedtakRepositoryTest :
             rad[ArbeidstakerVedtakEntitet.opprettet] shouldBe foersteRad[ArbeidstakerVedtakEntitet.opprettet]
         }
 
-        test("beholder flere hendelser for samme vedtaksperiode") {
+        test("lagrer flere hendelser for samme vedtaksperiode") {
             val foersteId = repository.lagre(vedtak, topic, 0, 10L)
             val andreId = repository.lagre(vedtak.copy(sykepengegrunnlag = 1.0), topic, 0, 11L)
 
@@ -114,7 +114,7 @@ class ArbeidstakerVedtakRepositoryTest :
             rader() shouldHaveSize 2
         }
 
-        test("samme offset i forskjellige partisjoner og topics er ulike hendelser") {
+        test("lagrer meldinger med samme offset separat når topic eller partisjon er forskjellig") {
             val ids =
                 setOf(
                     repository.lagre(vedtak, topic, 0, 10L),
@@ -126,7 +126,7 @@ class ArbeidstakerVedtakRepositoryTest :
             rader() shouldHaveSize 3
         }
 
-        test("samtidige innsettinger av samme record gir samme refusjonUtfallId") {
+        test("lagrer samme melding bare én gang ved samtidige forsøk") {
             val ids =
                 coroutineScope {
                     List(3) {
@@ -138,7 +138,7 @@ class ArbeidstakerVedtakRepositoryTest :
             rader() shouldHaveSize 1
         }
 
-        test("lagrer tolket modell uten ukjente felt og med normalisert dagtype") {
+        test("utelater ukjente felt og lagrer ukjent dagtype som UKJENT_DAG") {
             val melding =
                 vedtak.copy(
                     utbetalingsdager = listOf(Utbetalingsdag(LocalDate.of(2026, 7, 28), Utbetalingsdagtype.NAV_DAG, 1000)),
@@ -165,7 +165,7 @@ class ArbeidstakerVedtakRepositoryTest :
             }
         }
 
-        test("andre databasefeil behandles ikke som duplikater") {
+        test("kaster feil ved brudd på en databasebegrensning") {
             transaction(db()) {
                 exec("ALTER TABLE arbeidstaker_vedtak ADD CONSTRAINT test_offset CHECK (kafka_offset >= 0)")
             }
@@ -181,7 +181,7 @@ class ArbeidstakerVedtakRepositoryTest :
             }
         }
 
-        test("databasefeil midt i en batch committer ikke og replay beholder tidligere lagrede UUIDer") {
+        test("beholder lagrede ID-er ved nytt forsøk etter databasefeil") {
             val feilendeRepository = spyk(repository)
             every { feilendeRepository.lagre(any(), topic, 0, 1L) } throws IllegalStateException("Databasefeil")
             val foerste = kafka(vedtakJson(), vedtakJson())
@@ -203,7 +203,7 @@ class ArbeidstakerVedtakRepositoryTest :
             replay.close()
         }
 
-        test("ugyldig melding etter lagring forhindrer commit og kan forsøkes igjen uten duplikater") {
+        test("oppretter ikke duplikater ved gjentatte forsøk på å behandle en ugyldig melding") {
             val foerste = kafka(vedtakJson(), "ikke json")
             shouldThrow<SerializationException> {
                 SisConsumer(foerste, topic, tolker, repository).poll()
@@ -221,7 +221,7 @@ class ArbeidstakerVedtakRepositoryTest :
             replay.close()
         }
 
-        test("commit-feil etter lagring tåler replay uten å endre refusjonUtfallId") {
+        test("beholder refusjonUtfallId ved nytt forsøk etter feil ved bekreftelse av offset") {
             val foerste = spyk(kafka(vedtakJson()))
             every { foerste.commitSync() } throws CommitFailedException("Rebalansering")
 
