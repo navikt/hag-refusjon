@@ -9,7 +9,11 @@ import io.ktor.server.routing.route
 fun Route.naisRoutes() {
     route("/health") {
         get("/is-alive") {
-            call.respond(HttpStatusCode.OK, "Alive")
+            if (ShutDownAppState.shutDownApp) {
+                call.respond(HttpStatusCode.InternalServerError, "Kafka consumer har feilet")
+            } else {
+                call.respond(HttpStatusCode.OK, "Alive")
+            }
         }
         get("/is-ready") {
             call.respond(HttpStatusCode.OK, "Ready")

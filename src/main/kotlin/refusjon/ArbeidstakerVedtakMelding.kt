@@ -2,19 +2,23 @@
 
 package no.nav.helsearbeidsgiver.vedtak
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateSerializer
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateTimeSerializer
 import no.nav.helsearbeidsgiver.utils.json.serializer.UuidSerializer
+import no.nav.helsearbeidsgiver.utils.log.logger
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
 
-// Speiler VedtakArbeidsgiverMelding i sykepenger-im-lps-api. Feltnavn og @SerialName må holdes like.
 @Serializable
 data class ArbeidstakerVedtakMelding(
     val eventName: SisEventName,
@@ -80,9 +84,32 @@ data class Dokument(
 @Serializable
 data class Utbetalingsdag(
     val dato: LocalDate,
-    val type: Utbetalingsdagtype,
+    @Serializable(with = UtbetalingsdagtypeSerializer::class) val type: Utbetalingsdagtype,
     @SerialName("beløpTilArbeidsgiver") val beloepTilArbeidsgiver: Int,
 )
+
+// Nye dagtyper dukker jevnlig opp i sis. Ukjente verdier mappes til UKJENT_DAG i stedet for å feile hele meldingen.
+object UtbetalingsdagtypeSerializer : KSerializer<Utbetalingsdagtype> {
+    private val logger = logger()
+    private val standardSerializer = Utbetalingsdagtype.serializer()
+
+    private val dagtypePerNavn: Map<String, Utbetalingsdagtype> =
+        Utbetalingsdagtype.entries.associateBy { standardSerializer.descriptor.getElementName(it.ordinal) }
+
+    override val descriptor: SerialDescriptor = standardSerializer.descriptor
+
+    override fun serialize(
+        encoder: Encoder,
+        value: Utbetalingsdagtype,
+    ) = standardSerializer.serialize(encoder, value)
+
+    override fun deserialize(decoder: Decoder): Utbetalingsdagtype {
+        val navn = decoder.decodeString()
+        return dagtypePerNavn[navn] ?: Utbetalingsdagtype.UKJENT_DAG.also {
+            logger.warn("Mottok ukjent utbetalingsdagtype '$navn' i arbeidstakervedtak på tbd.sis, bruker UKJENT_DAG")
+        }
+    }
+}
 
 @Serializable
 enum class Utbetalingsdagtype {
@@ -104,6 +131,9 @@ enum class Utbetalingsdagtype {
     @SerialName("Feriedag")
     FERIEDAG,
 
+    @SerialName("Permisjonsdag")
+    PERMISJONSDAG,
+
     @SerialName("Arbeidsdag")
     ARBEIDSDAG,
 
@@ -115,6 +145,12 @@ enum class Utbetalingsdagtype {
 
     @SerialName("Ventetidsdag")
     VENTETIDSDAG,
+
+    @SerialName("ArbeidIkkeGjenopptattDag")
+    ARBEID_IKKE_GJENOPPTATT_DAG,
+
+    @SerialName("AndreYtelser")
+    ANDRE_YTELSER,
 
     @SerialName("UkjentDag")
     UKJENT_DAG,

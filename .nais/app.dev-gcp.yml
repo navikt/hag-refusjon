@@ -15,6 +15,10 @@ spec:
   env:
     - name: BRREG_URL
       value: "https://data.ppe.brreg.no/enhetsregisteret/api/underenheter"
+    - name: KAFKA_TOPIC_SIS
+      value: tbd.sis
+    - name: KAFKA_CONSUMER_GROUP_ID
+      value: hag-refusjon-v1
     - name: GCP_BUCKET_NAME
       value: helsearbeidsgiver-refusjon-dev
     - name: PDL_URL

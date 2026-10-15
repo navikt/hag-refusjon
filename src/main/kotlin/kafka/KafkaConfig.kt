@@ -2,9 +2,11 @@ package no.nav.helsearbeidsgiver.kafka
 
 import no.nav.helsearbeidsgiver.Env.getPropertyOrNull
 import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.SslConfigs
 import org.apache.kafka.common.security.auth.SecurityProtocol
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import java.util.Properties
 
@@ -23,6 +25,24 @@ fun createKafkaProducerConfig(producerName: String): Properties {
         )
 
     return Properties().apply { putAll(producerKafkaProperties + commonKafkaProperties()) }
+}
+
+fun createKafkaConsumerConfig(
+    consumerName: String,
+    groupId: String,
+): Properties {
+    val consumerKafkaProperties =
+        mapOf(
+            ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to (getPropertyOrNull("KAFKA_BROKERS") ?: "localhost:9092"),
+            ConsumerConfig.GROUP_ID_CONFIG to groupId,
+            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java.name,
+            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java.name,
+            ConsumerConfig.AUTO_OFFSET_RESET_CONFIG to "latest",
+            ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG to "false",
+            ConsumerConfig.CLIENT_ID_CONFIG to "refusjon-$consumerName",
+        )
+
+    return Properties().apply { putAll(consumerKafkaProperties + commonKafkaProperties()) }
 }
 
 private fun commonKafkaProperties(): Map<String, String> {
