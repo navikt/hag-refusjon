@@ -1,14 +1,19 @@
 package no.nav.helsearbeidsgiver.kafka
 
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopping
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import no.nav.helsearbeidsgiver.helsesjekker.ShutDownAppState
 import no.nav.helsearbeidsgiver.utils.log.logger
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
+import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakRepository
 import org.apache.kafka.clients.consumer.Consumer
 import java.time.Duration
 
@@ -16,6 +21,7 @@ class SisConsumer(
     private val consumer: Consumer<String, String>,
     private val topic: String,
     private val tolker: SisTolker,
+    private val repository: ArbeidstakerVedtakRepository,
 ) {
     private val sikkerLogger = sikkerLogger()
 
@@ -24,22 +30,27 @@ class SisConsumer(
             consumer.subscribe(listOf(topic))
             while (currentCoroutineContext().isActive) poll()
         } finally {
-            consumer.close()
+            consumer.close(Duration.ofSeconds(10))
         }
     }
 
-    fun poll() {
+    suspend fun poll() {
         val records = consumer.poll(Duration.ofSeconds(1))
         records.forEach { record ->
+            currentCoroutineContext().ensureActive()
             val value = record.value() ?: return@forEach
-            runCatching { tolker.lesMelding(value) }
-                .onFailure {
-                    sikkerLogger.error(
-                        "Klarte ikke å tolke melding på $topic, partition ${record.partition()}, offset ${record.offset()}:\n$value",
-                        it,
-                    )
-                }
+            runCatching {
+                val melding = tolker.lesMelding(value) ?: return@forEach
+                val refusjonUtfallId = repository.lagre(melding, record.topic(), record.partition(), record.offset())
+                sikkerLogger.info("Arbeidstakervedtak lagret med refusjonUtfallId $refusjonUtfallId")
+            }.onFailure {
+                sikkerLogger.error(
+                    "Klarte ikke å behandle melding på $topic, partition ${record.partition()}, offset ${record.offset()}",
+                    it,
+                )
+            }.getOrThrow()
         }
+        currentCoroutineContext().ensureActive()
         if (!records.isEmpty) consumer.commitSync()
     }
 }
@@ -54,5 +65,8 @@ fun Application.configureSisConsumer(sisConsumer: SisConsumer) {
             ShutDownAppState.shutDownApp = true
         }
 
-    launch(Dispatchers.IO + exceptionHandler) { sisConsumer.kjoer() }
+    val job = launch(Dispatchers.IO + exceptionHandler) { sisConsumer.kjoer() }
+    monitor.subscribe(ApplicationStopping) {
+        runBlocking { job.cancelAndJoin() }
+    }
 }
