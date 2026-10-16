@@ -32,6 +32,7 @@ import org.apache.kafka.common.TopicPartition
 import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.seconds
 
 class SisConsumerTest :
     FunSpec({
@@ -186,7 +187,7 @@ class SisConsumerTest :
             coroutineScope {
                 val job = launch(Dispatchers.IO) { SisConsumer(kafka, topic, tolker, mockk()).kjoer() }
                 try {
-                    withTimeout(5_000) {
+                    withTimeout(5.seconds) {
                         while (!polled.get()) yield()
                     }
                 } finally {
