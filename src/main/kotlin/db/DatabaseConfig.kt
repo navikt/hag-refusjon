@@ -4,7 +4,7 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import no.nav.helsearbeidsgiver.Env.getPropertyOrNull
 import org.flywaydb.core.Flyway
-import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.v1.jdbc.Database
 
 class DatabaseConfig(
     jdbcUrl: String = requiredProperty("NAIS_DATABASE_REFUSJON_REFUSJON_JDBC_URL"),
