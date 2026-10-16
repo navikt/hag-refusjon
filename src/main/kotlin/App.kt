@@ -21,6 +21,7 @@ import no.nav.helsearbeidsgiver.auth.TokenValidator
 import no.nav.helsearbeidsgiver.brreg.BrregClient
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
+import no.nav.helsearbeidsgiver.db.DatabaseConfig
 import no.nav.helsearbeidsgiver.helsesjekker.naisRoutes
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.kafka.SisConsumer
@@ -32,6 +33,7 @@ import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.utils.cache.LocalCache
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.pipe.orDefault
+import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakRepository
 import no.nav.helsearbeidsgiver.vedtak.pdfRoutes
 import no.nav.helsearbeidsgiver.vedtak.vedtakRoutes
 import no.nav.helsearbeidsgiver.virksomhet.BrregVirksomhetsnavnKlient
@@ -84,29 +86,32 @@ fun main() {
                 getPropertyOrNull("NAIS_TOKEN_INTROSPECTION_ENDPOINT")
                     .orDefault { throw RuntimeException("NAIS_TOKEN_INTROSPECTION_ENDPOINT ikke satt") },
         )
-    val sisConsumer =
-        SisConsumer(
-            consumer =
-                KafkaConsumer(
-                    createKafkaConsumerConfig(
-                        consumerName = "sis-consumer",
-                        groupId =
-                            getPropertyOrNull(
-                                "KAFKA_CONSUMER_GROUP_ID",
-                            ).orDefault { throw RuntimeException("KAFKA_CONSUMER_GROUP_ID ikke satt") },
+    DatabaseConfig().use { database ->
+        val sisConsumer =
+            SisConsumer(
+                consumer =
+                    KafkaConsumer(
+                        createKafkaConsumerConfig(
+                            consumerName = "sis-consumer",
+                            groupId =
+                                getPropertyOrNull(
+                                    "KAFKA_CONSUMER_GROUP_ID",
+                                ).orDefault { throw RuntimeException("KAFKA_CONSUMER_GROUP_ID ikke satt") },
+                        ),
                     ),
-                ),
-            topic = getPropertyOrNull("KAFKA_TOPIC_SIS").orDefault { throw RuntimeException("KAFKA_TOPIC_SIS ikke satt") },
-            tolker = SisTolker(),
-        )
-    embeddedServer(
-        factory = Netty,
-        port = 8080,
-        module = {
-            module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService, tokenValidator)
-            configureSisConsumer(sisConsumer)
-        },
-    ).start(wait = true)
+                topic = getPropertyOrNull("KAFKA_TOPIC_SIS").orDefault { throw RuntimeException("KAFKA_TOPIC_SIS ikke satt") },
+                tolker = SisTolker(),
+                repository = ArbeidstakerVedtakRepository(database.database),
+            )
+        embeddedServer(
+            factory = Netty,
+            port = 8080,
+            module = {
+                module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService, tokenValidator)
+                configureSisConsumer(sisConsumer)
+            },
+        ).start(wait = true)
+    }
 }
 
 fun Application.module(
