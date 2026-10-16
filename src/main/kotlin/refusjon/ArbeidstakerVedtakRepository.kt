@@ -1,16 +1,18 @@
 package no.nav.helsearbeidsgiver.vedtak
 
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.IntegerColumnType
-import org.jetbrains.exposed.sql.LongColumnType
-import org.jetbrains.exposed.sql.TextColumnType
-import org.jetbrains.exposed.sql.UUIDColumnType
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.StatementType
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.IntegerColumnType
+import org.jetbrains.exposed.v1.core.LongColumnType
+import org.jetbrains.exposed.v1.core.TextColumnType
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.java.UUIDColumnType
+import org.jetbrains.exposed.v1.core.statements.StatementType
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.util.UUID
+import kotlin.uuid.toJavaUuid
 
 class ArbeidstakerVedtakRepository(
     private val db: Database,
@@ -27,7 +29,7 @@ class ArbeidstakerVedtakRepository(
 
             // Kun konflikt på Kafka-posisjonen er en forventet duplikat.
             val nyId =
-                exec(
+                this.exec(
                     """
                     INSERT INTO arbeidstaker_vedtak
                         (refusjon_utfall_id, kafka_topic, kafka_partition, kafka_offset,
@@ -59,5 +61,6 @@ class ArbeidstakerVedtakRepository(
                         (ArbeidstakerVedtakEntitet.kafkaPartition eq partition) and
                         (ArbeidstakerVedtakEntitet.kafkaOffset eq offset)
                 }.single()[ArbeidstakerVedtakEntitet.refusjonUtfallId]
+                .toJavaUuid()
         }
 }

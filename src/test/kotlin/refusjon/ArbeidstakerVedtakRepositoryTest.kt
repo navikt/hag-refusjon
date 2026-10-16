@@ -22,14 +22,14 @@ import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import org.apache.kafka.clients.consumer.CommitFailedException
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.MockConsumer
-import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.TopicPartition
-import org.jetbrains.exposed.exceptions.ExposedSQLException
-import org.jetbrains.exposed.sql.deleteAll
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
+import org.jetbrains.exposed.v1.jdbc.deleteAll
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.LocalDate
+import kotlin.uuid.toKotlinUuid
 
 class ArbeidstakerVedtakRepositoryTest :
     FunSpec({
@@ -51,7 +51,7 @@ class ArbeidstakerVedtakRepositoryTest :
         fun vedtakJson() = vedtak.toJson(ArbeidstakerVedtakMelding.serializer()).toString()
 
         fun kafka(vararg values: String): MockConsumer<String, String> =
-            MockConsumer<String, String>(OffsetResetStrategy.EARLIEST).apply {
+            MockConsumer<String, String>("earliest").apply {
                 assign(listOf(partition))
                 updateBeginningOffsets(mapOf(partition to 0L))
                 values.forEachIndexed { index, value ->
@@ -75,14 +75,15 @@ class ArbeidstakerVedtakRepositoryTest :
         }
 
         test("lagrer vedtak som JSONB med søkefelt og refusjonUtfallId") {
-            val id = repository.lagre(vedtak, topic, 0, 10L)
+            // repo.lagre() returnerer javaUUID, men entitetens type som vi skal sammenligne med er type kotlinUuid.
+            val id = repository.lagre(vedtak, topic, 0, 10L).toKotlinUuid()
 
             val rad = rader().single()
             rad[ArbeidstakerVedtakEntitet.refusjonUtfallId] shouldBe id
             rad[ArbeidstakerVedtakEntitet.kafkaTopic] shouldBe topic
             rad[ArbeidstakerVedtakEntitet.kafkaPartition] shouldBe 0
             rad[ArbeidstakerVedtakEntitet.kafkaOffset] shouldBe 10L
-            rad[ArbeidstakerVedtakEntitet.vedtaksperiodeId] shouldBe vedtak.vedtaksperiodeId
+            rad[ArbeidstakerVedtakEntitet.vedtaksperiodeId] shouldBe vedtak.vedtaksperiodeId.toKotlinUuid()
             rad[ArbeidstakerVedtakEntitet.fnr] shouldBe vedtak.foedselsnummer.toString()
             rad[ArbeidstakerVedtakEntitet.orgnr] shouldBe vedtak.organisasjonsnummer.toString()
             rad[ArbeidstakerVedtakEntitet.melding] shouldBe vedtak

@@ -1,9 +1,9 @@
 package no.nav.helsearbeidsgiver.vedtak
 
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
-import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.javatime.timestampWithTimeZone
-import org.jetbrains.exposed.sql.json.jsonb
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
+import org.jetbrains.exposed.v1.json.jsonb
 
 object ArbeidstakerVedtakEntitet : Table("arbeidstaker_vedtak") {
     val id = long("id").autoIncrement()

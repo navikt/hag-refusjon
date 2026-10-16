@@ -14,6 +14,7 @@ import no.nav.helsearbeidsgiver.helsesjekker.ShutDownAppState
 import no.nav.helsearbeidsgiver.utils.log.logger
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakRepository
+import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.Consumer
 import java.time.Duration
 
@@ -30,7 +31,7 @@ class SisConsumer(
             consumer.subscribe(listOf(topic))
             while (currentCoroutineContext().isActive) poll()
         } finally {
-            consumer.close(Duration.ofSeconds(10))
+            consumer.close(CloseOptions.timeout(Duration.ofSeconds(10)))
         }
     }
 
