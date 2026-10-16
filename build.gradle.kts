@@ -5,6 +5,15 @@ plugins {
     application
 }
 
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "io.netty") {
+            useVersion("4.2.18.Final")
+            because("Override Ktor's Netty til en nyere versjon")
+        }
+    }
+}
+
 kotlin {
     jvmToolchain(25)
 }
