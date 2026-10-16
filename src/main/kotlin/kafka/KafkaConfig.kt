@@ -41,7 +41,7 @@ fun createKafkaConsumerConfig(
             ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG to "false",
             ConsumerConfig.CLIENT_ID_CONFIG to "refusjon-$consumerName",
             ConsumerConfig.MAX_POLL_RECORDS_CONFIG to "10",
-            ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG to "60000",
+            ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG to "300000",
         )
 
     return Properties().apply { putAll(consumerKafkaProperties + commonKafkaProperties()) }
