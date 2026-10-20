@@ -17,16 +17,12 @@ import no.nav.helsearbeidsgiver.utils.createHttpClient
 import no.nav.helsearbeidsgiver.utils.json.serializer.UuidSerializer
 import java.util.UUID
 
-interface RefusjonskravKlient {
-    suspend fun hentRefusjonskrav(inntektsmeldingIder: List<UUID>): List<InntektsmeldingRefusjonskrav>
-}
-
-class SpinosaurusRefusjonskravKlient(
+class RefusjonskravKlient(
     private val baseUrl: String,
     private val getAccessToken: () -> String,
     private val client: HttpClient = createHttpClient(),
-) : RefusjonskravKlient {
-    override suspend fun hentRefusjonskrav(inntektsmeldingIder: List<UUID>): List<InntektsmeldingRefusjonskrav> =
+) {
+    suspend fun hentRefusjonskrav(inntektsmeldingIder: List<UUID>): List<InntektsmeldingRefusjonskrav> =
         client
             .post(baseUrl + "/api/v1/inntektsmelding/refusjonskrav") {
                 contentType(ContentType.Application.Json)

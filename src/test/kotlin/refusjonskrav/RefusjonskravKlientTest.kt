@@ -19,7 +19,6 @@ import io.ktor.serialization.kotlinx.json.json
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.json.parseJson
 import java.util.UUID
-import kotlin.uuid.toKotlinUuid
 
 private const val BASE_URL = "http://spinosaurus"
 private val ID_1 = UUID.randomUUID()
@@ -32,7 +31,7 @@ class RefusjonskravKlientTest :
                 forventedeIder = listOf(ID_2, ID_1, ID_2),
                 responsBody = "[]",
             ).use { client ->
-                val klient = SpinosaurusRefusjonskravKlient(BASE_URL, { "et-token" }, client)
+                val klient = RefusjonskravKlient(BASE_URL, { "et-token" }, client)
 
                 klient.hentRefusjonskrav(listOf(ID_2, ID_1, ID_2)) shouldBe emptyList()
             }
@@ -49,7 +48,7 @@ class RefusjonskravKlientTest :
                     ]
                     """.trimIndent(),
             ).use { client ->
-                val klient = SpinosaurusRefusjonskravKlient(BASE_URL, { "et-token" }, client)
+                val klient = RefusjonskravKlient(BASE_URL, { "et-token" }, client)
 
                 klient.hentRefusjonskrav(listOf(ID_2, ID_1, ID_2)) shouldBe
                     listOf(
@@ -64,7 +63,7 @@ class RefusjonskravKlientTest :
                 forventedeIder = listOf(ID_1, ID_2),
                 responsBody = """[{"inntektsmeldingId": "$ID_2", "refusjonskrav": null}]""",
             ).use { client ->
-                val klient = SpinosaurusRefusjonskravKlient(BASE_URL, { "et-token" }, client)
+                val klient = RefusjonskravKlient(BASE_URL, { "et-token" }, client)
 
                 klient.hentRefusjonskrav(listOf(ID_1, ID_2)) shouldBe
                     listOf(InntektsmeldingRefusjonskrav(ID_2, null))
@@ -73,7 +72,7 @@ class RefusjonskravKlientTest :
 
         test("sender en tom liste som JSON-body") {
             mockSpinosaurus(emptyList(), "[]").use { client ->
-                val klient = SpinosaurusRefusjonskravKlient(BASE_URL, { "et-token" }, client)
+                val klient = RefusjonskravKlient(BASE_URL, { "et-token" }, client)
 
                 klient.hentRefusjonskrav(emptyList()) shouldBe emptyList()
             }
@@ -81,7 +80,7 @@ class RefusjonskravKlientTest :
 
         test("propagerer 400 fra Spinosaurus") {
             mockSpinosaurus(listOf(ID_1), """{"message": "Ugyldig request"}""", HttpStatusCode.BadRequest).use { client ->
-                val klient = SpinosaurusRefusjonskravKlient(BASE_URL, { "et-token" }, client)
+                val klient = RefusjonskravKlient(BASE_URL, { "et-token" }, client)
 
                 shouldThrow<ClientRequestException> {
                     klient.hentRefusjonskrav(listOf(ID_1))
@@ -91,7 +90,7 @@ class RefusjonskravKlientTest :
 
         test("propagerer 500 fra Spinosaurus") {
             mockSpinosaurus(listOf(ID_1), """{"message": "Intern serverfeil"}""", HttpStatusCode.InternalServerError).use { client ->
-                val klient = SpinosaurusRefusjonskravKlient(BASE_URL, { "et-token" }, client)
+                val klient = RefusjonskravKlient(BASE_URL, { "et-token" }, client)
 
                 shouldThrow<ServerResponseException> {
                     klient.hentRefusjonskrav(listOf(ID_1))

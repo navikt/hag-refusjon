@@ -8,7 +8,7 @@ class RefusjonskravService(
 ) {
     constructor(url: String, scope: String, tokenEndpoint: String) : this(
         refusjonskravKlient =
-            SpinosaurusRefusjonskravKlient(
+            RefusjonskravKlient(
                 url,
                 getAccessToken = AzureAdTokenHenter(tokenEndpoint).tokenGetter(scope),
             ),
