@@ -30,6 +30,7 @@ import no.nav.helsearbeidsgiver.kafka.configureSisConsumer
 import no.nav.helsearbeidsgiver.kafka.createKafkaConsumerConfig
 import no.nav.helsearbeidsgiver.kafka.createKafkaProducerConfig
 import no.nav.helsearbeidsgiver.person.PdlService
+import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
 import no.nav.helsearbeidsgiver.utils.cache.LocalCache
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.pipe.orDefault
@@ -74,6 +75,12 @@ fun main() {
             scope = getPropertyOrNull("PDL_SCOPE").orDefault { throw RuntimeException("PDL_SCOPE ikke satt") },
             tokenEndpoint = getPropertyOrNull("NAIS_TOKEN_ENDPOINT").orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
         )
+    val refusjonskravService =
+        RefusjonskravService(
+            url = getPropertyOrNull("REFUSJONSKRAV_URL").orDefault { throw RuntimeException("REFUSJONSKRAV_URL ikke satt") },
+            scope = getPropertyOrNull("REFUSJONSKRAV_SCOPE").orDefault { throw RuntimeException("REFUSJONSKRAV_SCOPE ikke satt") },
+            tokenEndpoint = getPropertyOrNull("NAIS_TOKEN_ENDPOINT").orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
+        )
     val arkivService =
         ArkivService(
             url = getPropertyOrNull("DOKARKIV_URL").orDefault { throw RuntimeException("DOKARKIV_URL ikke satt") },
@@ -107,7 +114,15 @@ fun main() {
             factory = Netty,
             port = 8080,
             module = {
-                module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService, tokenValidator)
+                module(
+                    bucketStorage,
+                    refusjonProducer,
+                    virksomhetsnavnKlient,
+                    pdlService,
+                    arkivService,
+                    tokenValidator,
+                    refusjonskravService,
+                )
                 configureSisConsumer(sisConsumer)
             },
         ).start(wait = true)
@@ -121,6 +136,7 @@ fun Application.module(
     pdlService: PdlService,
     arkivService: ArkivService,
     tokenValidator: TokenValidator,
+    refusjonskravService: RefusjonskravService,
 ) {
     install(ContentNegotiation) {
         json(jsonConfig)
@@ -137,7 +153,7 @@ fun Application.module(
         get("/hello") {
             call.respondText("Hello World!")
         }
-        vedtakRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService)
+        vedtakRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService, refusjonskravService)
         authenticate(ENTRA_ID_AUTH) {
             pdfRoutes(bucketStorage)
         }

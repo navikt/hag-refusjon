@@ -14,6 +14,7 @@ import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
 import no.nav.helsearbeidsgiver.kafka.mockProducer
 import no.nav.helsearbeidsgiver.person.PdlService
+import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 
 class AppTest :
@@ -28,6 +29,7 @@ class AppTest :
                         mockk<PdlService>(),
                         mockk<ArkivService>(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -48,6 +50,7 @@ class AppTest :
                         mockk<PdlService>(),
                         mockk<ArkivService>(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 

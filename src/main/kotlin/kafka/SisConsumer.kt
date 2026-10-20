@@ -42,6 +42,7 @@ class SisConsumer(
             val value = record.value() ?: return@forEach
             runCatching {
                 val melding = tolker.lesMelding(value) ?: return@forEach
+                // TODO: lag bg-jobb
                 val refusjonUtfallId = repository.lagre(melding, record.topic(), record.partition(), record.offset())
                 sikkerLogger.info("Arbeidstakervedtak lagret med refusjonUtfallId $refusjonUtfallId")
             }.onFailure {

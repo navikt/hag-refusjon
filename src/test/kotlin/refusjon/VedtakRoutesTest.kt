@@ -38,6 +38,7 @@ import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
 import no.nav.helsearbeidsgiver.kafka.mockProducer
 import no.nav.helsearbeidsgiver.module
 import no.nav.helsearbeidsgiver.person.PdlService
+import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
 import no.nav.helsearbeidsgiver.utils.PdfgenHttpClient
 import no.nav.helsearbeidsgiver.utils.json.fromJson
 import no.nav.helsearbeidsgiver.utils.json.parseJson
@@ -77,6 +78,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivService,
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(relaxed = true),
                     )
                 }
 
@@ -133,6 +135,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -165,6 +168,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivService,
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(relaxed = true),
                     )
                 }
 
@@ -193,6 +197,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -222,6 +227,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -251,6 +257,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -284,6 +291,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -313,6 +321,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(navn = null),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -346,6 +355,7 @@ class VedtakRoutesTest :
                         klient,
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -374,6 +384,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -396,6 +407,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -415,6 +427,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -437,6 +450,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 
@@ -459,6 +473,7 @@ class VedtakRoutesTest :
                         pdlServiceMock(),
                         arkivServiceMock(),
                         FakeTokenValidator(),
+                        mockk<RefusjonskravService>(),
                     )
                 }
 

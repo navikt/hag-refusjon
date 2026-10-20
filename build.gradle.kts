@@ -39,8 +39,10 @@ repositories {
 }
 
 dependencies {
+    val bakgrunnsjobbVersion: String by project
     val brregClientVersion: String by project
     val dokarkivClientVersion: String by project
+    val hagDomeneInntektsmeldingVersion: String by project
     val exposedVersion: String by project
     val flywayCoreVersion: String by project
     val gcpStorageVersion: String by project
@@ -59,6 +61,7 @@ dependencies {
     implementation("io.ktor:ktor-client-apache5:$ktorVersion")
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-logging:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("io.ktor:ktor-server-auth:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
@@ -67,6 +70,8 @@ dependencies {
     implementation("net.logstash.logback:logstash-logback-encoder:$logbackEncoderVersion")
     implementation("no.nav.helsearbeidsgiver:brreg-client:$brregClientVersion")
     implementation("no.nav.helsearbeidsgiver:dokarkiv-client:$dokarkivClientVersion")
+    implementation("no.nav.helsearbeidsgiver:domene-inntektsmelding:$hagDomeneInntektsmeldingVersion")
+    implementation("no.nav.helsearbeidsgiver:hag-bakgrunnsjobb:$bakgrunnsjobbVersion")
     implementation("no.nav.helsearbeidsgiver:pdl-client:$pdlClientVersion")
     implementation("no.nav.helsearbeidsgiver:utils:$utilsVersion")
     implementation("org.apache.kafka:kafka-clients:$kafkaVersion")

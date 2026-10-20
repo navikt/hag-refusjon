@@ -5,6 +5,7 @@ import io.ktor.client.engine.apache5.Apache5
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import java.util.UUID
@@ -23,6 +24,8 @@ fun createHttpClient() =
             connectTimeoutMillis = 5000
             socketTimeoutMillis = 5000
         }
+        // TODO: stram denne til før prod
+        install(Logging)
     }
 
 fun String.toUuidOrNull() = runCatching(UUID::fromString).getOrNull()
