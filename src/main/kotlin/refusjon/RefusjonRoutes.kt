@@ -48,6 +48,7 @@ fun Route.vedtakRoutes(
         val inntektsmeldingIder = melding.dokumenter.filter { it.type == Dokument.Type.Inntektsmelding }.map { it.dokumentId }
         val refusjonskrav = refusjonskravService.hentRefusjonskrav(inntektsmeldingIder = inntektsmeldingIder)
         sikkerLogger().info("Hentet refusjonskrav: $refusjonskrav")
+        // TODO: Lagre refusjonskrav i database
 
         // TODO: putt alle oppslag etc i Service / bg-jobb-kode
 
