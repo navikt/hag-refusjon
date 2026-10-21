@@ -42,6 +42,7 @@ spec:
         - application: sykepenger-im-lps-api
     outbound:
       rules:
+        - application: spinosaurus
         - application: helsearbeidsgiver-pdfgen
         - application: logging
           namespace: nais-system

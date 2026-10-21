@@ -11,6 +11,7 @@ import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.person.PdlService
+import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
 import no.nav.helsearbeidsgiver.utils.genererRefusjonPdf
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import no.nav.helsearbeidsgiver.utils.respondMedPDF
@@ -27,6 +28,7 @@ fun Route.vedtakRoutes(
     virksomhetsnavnKlient: VirksomhetsnavnKlient,
     pdlService: PdlService,
     arkivService: ArkivService,
+    refusjonskravService: RefusjonskravService,
 ) {
     // midlertidlig mottak POST route fra LPS API (bytter til å motta direkte fra SAS i fremtiden)
     post("/arbeidstaker-vedtak") {
@@ -42,6 +44,13 @@ fun Route.vedtakRoutes(
         logger.info("Mottok arbeidstakervedtak for vedtaksperiodeId ${melding.vedtaksperiodeId}.")
 
         val refusjonUtfallId = UUID.randomUUID()
+
+        val inntektsmeldingIder = melding.dokumenter.filter { it.type == Dokument.Type.Inntektsmelding }.map { it.dokumentId }
+        val refusjonskrav = refusjonskravService.hentRefusjonskrav(inntektsmeldingIder = inntektsmeldingIder)
+        sikkerLogger().info("Hentet refusjonskrav: $refusjonskrav")
+        // TODO: Lagre refusjonskrav i database
+
+        // TODO: putt alle oppslag etc i Service / bg-jobb-kode
 
         val arbeidsgiverNavn =
             try {
