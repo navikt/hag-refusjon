@@ -19,26 +19,6 @@ import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 
 class AppTest :
     FunSpec({
-        test("GET /hello svarer med Hello World!") {
-            testApplication {
-                application {
-                    module(
-                        FakeBucketStorage(),
-                        RefusjonProducer(mockProducer(), TEST_TOPIC),
-                        mockk<VirksomhetsnavnKlient>(),
-                        mockk<PdlService>(),
-                        mockk<ArkivService>(),
-                        FakeTokenValidator(),
-                        mockk<RefusjonskravService>(),
-                    )
-                }
-
-                val response = client.get("/hello")
-
-                response.status shouldBe HttpStatusCode.OK
-                response.bodyAsText() shouldBe "Hello World!"
-            }
-        }
 
         test("helsesjekker svarer OK") {
             testApplication {

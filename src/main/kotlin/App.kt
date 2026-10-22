@@ -150,9 +150,6 @@ fun Application.module(
     }
     routing {
         naisRoutes()
-        get("/hello") {
-            call.respondText("Hello World!")
-        }
         vedtakRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService, refusjonskravService)
         authenticate(ENTRA_ID_AUTH) {
             pdfRoutes(bucketStorage)
