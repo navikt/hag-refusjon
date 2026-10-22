@@ -30,6 +30,7 @@ import no.nav.helsearbeidsgiver.kafka.configureSisConsumer
 import no.nav.helsearbeidsgiver.kafka.createKafkaConsumerConfig
 import no.nav.helsearbeidsgiver.kafka.createKafkaProducerConfig
 import no.nav.helsearbeidsgiver.person.PdlService
+import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravRepository
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
 import no.nav.helsearbeidsgiver.utils.cache.LocalCache
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
@@ -75,12 +76,6 @@ fun main() {
             scope = getPropertyOrNull("PDL_SCOPE").orDefault { throw RuntimeException("PDL_SCOPE ikke satt") },
             tokenEndpoint = getPropertyOrNull("NAIS_TOKEN_ENDPOINT").orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
         )
-    val refusjonskravService =
-        RefusjonskravService(
-            url = getPropertyOrNull("REFUSJONSKRAV_URL").orDefault { throw RuntimeException("REFUSJONSKRAV_URL ikke satt") },
-            scope = getPropertyOrNull("REFUSJONSKRAV_SCOPE").orDefault { throw RuntimeException("REFUSJONSKRAV_SCOPE ikke satt") },
-            tokenEndpoint = getPropertyOrNull("NAIS_TOKEN_ENDPOINT").orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
-        )
     val arkivService =
         ArkivService(
             url = getPropertyOrNull("DOKARKIV_URL").orDefault { throw RuntimeException("DOKARKIV_URL ikke satt") },
@@ -94,6 +89,16 @@ fun main() {
                     .orDefault { throw RuntimeException("NAIS_TOKEN_INTROSPECTION_ENDPOINT ikke satt") },
         )
     DatabaseConfig().use { database ->
+        val refusjonskravService =
+            RefusjonskravService(
+                url = getPropertyOrNull("REFUSJONSKRAV_URL").orDefault { throw RuntimeException("REFUSJONSKRAV_URL ikke satt") },
+                scope = getPropertyOrNull("REFUSJONSKRAV_SCOPE").orDefault { throw RuntimeException("REFUSJONSKRAV_SCOPE ikke satt") },
+                tokenEndpoint =
+                    getPropertyOrNull(
+                        "NAIS_TOKEN_ENDPOINT",
+                    ).orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
+                repository = RefusjonskravRepository(database.database),
+            )
         val sisConsumer =
             SisConsumer(
                 consumer =
