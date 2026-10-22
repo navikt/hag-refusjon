@@ -4,15 +4,15 @@ import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.BlobInfo
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 interface BucketStorage {
     fun lagrePdf(
-        id: UUID,
+        id: Uuid,
         pdf: ByteArray,
     )
 
-    fun hentPdf(id: UUID): ByteArray?
+    fun hentPdf(id: Uuid): ByteArray?
 }
 
 class BucketStorageImpl(
@@ -21,7 +21,7 @@ class BucketStorageImpl(
     private val storage: Storage = StorageOptions.getDefaultInstance().service
 
     override fun lagrePdf(
-        id: UUID,
+        id: Uuid,
         pdf: ByteArray,
     ) {
         val blobInfo =
@@ -33,5 +33,5 @@ class BucketStorageImpl(
         storage.create(blobInfo, pdf)
     }
 
-    override fun hentPdf(id: UUID): ByteArray? = storage.get(BlobId.of(bucketName, id.toString()))?.getContent()
+    override fun hentPdf(id: Uuid): ByteArray? = storage.get(BlobId.of(bucketName, id.toString()))?.getContent()
 }

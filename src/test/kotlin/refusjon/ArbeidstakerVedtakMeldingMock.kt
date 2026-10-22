@@ -5,6 +5,7 @@ import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.uuid.toKotlinUuid
 
 fun arbeidstakerVedtakMeldingMock(
     fnr: Fnr,
@@ -15,7 +16,7 @@ fun arbeidstakerVedtakMeldingMock(
         foedselsnummer = fnr,
         yrkesaktivitetstype = Yrkesaktivitetstype.ARBEIDSTAKER,
         organisasjonsnummer = orgnr,
-        vedtaksperiodeId = UUID.randomUUID(),
+        vedtaksperiodeId = UUID.randomUUID().toKotlinUuid(),
         fom = LocalDate.of(2026, 7, 28),
         tom = LocalDate.of(2026, 8, 3),
         skjaeringstidspunkt = LocalDate.of(2026, 7, 1),

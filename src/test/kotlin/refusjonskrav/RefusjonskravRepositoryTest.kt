@@ -12,6 +12,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.LocalDate
 import java.util.UUID
+import kotlin.uuid.toKotlinUuid
 
 class RefusjonskravRepositoryTest :
     FunSpec({
@@ -22,7 +23,7 @@ class RefusjonskravRepositoryTest :
         fun db() = checkNotNull(databaseConfig).database
 
         fun krav(refusjon: Refusjon? = Refusjon(beloepPerMaaned = 1000.0, endringer = emptyList())) =
-            InntektsmeldingRefusjonskrav(UUID.randomUUID(), refusjon)
+            InntektsmeldingRefusjonskrav(UUID.randomUUID().toKotlinUuid(), refusjon)
 
         beforeSpec {
             postgres.start()
@@ -83,7 +84,7 @@ class RefusjonskravRepositoryTest :
         }
 
         test("hent returnerer kun kjente id-er, og tom liste gir tom liste") {
-            repository.hent(listOf(UUID.randomUUID())) shouldBe emptyList()
+            repository.hent(listOf(UUID.randomUUID().toKotlinUuid())) shouldBe emptyList()
             repository.hent(emptyList()) shouldBe emptyList()
             repository.lagre(emptyList()) shouldBe emptyList()
         }

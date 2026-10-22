@@ -9,6 +9,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import java.util.UUID
+import kotlin.uuid.toKotlinUuid
 
 class RefusjonskravServiceTest :
     FunSpec({
@@ -19,8 +20,8 @@ class RefusjonskravServiceTest :
         beforeTest { clearAllMocks() }
 
         test("henter kun manglende fra klient og lagrer dem") {
-            val lagret = InntektsmeldingRefusjonskrav(UUID.randomUUID(), null)
-            val nytt = InntektsmeldingRefusjonskrav(UUID.randomUUID(), null)
+            val lagret = InntektsmeldingRefusjonskrav(UUID.randomUUID().toKotlinUuid(), null)
+            val nytt = InntektsmeldingRefusjonskrav(UUID.randomUUID().toKotlinUuid(), null)
             every { repository.hent(any()) } returns listOf(lagret)
             coEvery { klient.hentRefusjonskrav(listOf(nytt.inntektsmeldingId)) } returns listOf(nytt)
             every { repository.lagre(listOf(nytt)) } returns listOf(nytt.inntektsmeldingId)
@@ -32,7 +33,7 @@ class RefusjonskravServiceTest :
         }
 
         test("kaller ikke klient når alt allerede er lagret") {
-            val lagret = InntektsmeldingRefusjonskrav(UUID.randomUUID(), null)
+            val lagret = InntektsmeldingRefusjonskrav(UUID.randomUUID().toKotlinUuid(), null)
             every { repository.hent(any()) } returns listOf(lagret)
 
             service.hentRefusjonskrav(listOf(lagret.inntektsmeldingId)) shouldContainExactlyInAnyOrder listOf(lagret)

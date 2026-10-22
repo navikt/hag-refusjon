@@ -1,16 +1,16 @@
 package no.nav.helsearbeidsgiver.bucket
 
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 class FakeBucketStorage : BucketStorage {
-    val pdfer = HashMap<UUID, ByteArray>()
+    val pdfer = HashMap<Uuid, ByteArray>()
 
     override fun lagrePdf(
-        id: UUID,
+        id: Uuid,
         pdf: ByteArray,
     ) {
         pdfer[id] = pdf
     }
 
-    override fun hentPdf(id: UUID): ByteArray? = pdfer[id]
+    override fun hentPdf(id: Uuid): ByteArray? = pdfer[id]
 }

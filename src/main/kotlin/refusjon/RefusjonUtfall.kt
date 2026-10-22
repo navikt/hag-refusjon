@@ -1,4 +1,4 @@
-@file:UseSerializers(UuidSerializer::class, LocalDateSerializer::class, LocalDateTimeSerializer::class)
+@file:UseSerializers(LocalDateSerializer::class, LocalDateTimeSerializer::class)
 
 package no.nav.helsearbeidsgiver.vedtak
 
@@ -6,17 +6,16 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateSerializer
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateTimeSerializer
-import no.nav.helsearbeidsgiver.utils.json.serializer.UuidSerializer
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 @Serializable
 data class RefusjonUtfall(
-    val refusjonUtfallId: UUID,
-    val vedtaksperiodeId: UUID,
+    val refusjonUtfallId: Uuid,
+    val vedtaksperiodeId: Uuid,
     val fnr: Fnr,
     val orgnr: Orgnr,
     val fom: LocalDate,
@@ -38,7 +37,7 @@ enum class Utfall {
 }
 
 fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
-    refusjonsutfallId: UUID,
+    refusjonsutfallId: Uuid,
     arbeidsgiverNavn: String,
     sykmeldtNavn: String,
     journalpostId: String,

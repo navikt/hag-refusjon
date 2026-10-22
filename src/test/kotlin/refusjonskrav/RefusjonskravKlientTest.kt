@@ -19,10 +19,12 @@ import io.ktor.serialization.kotlinx.json.json
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.json.parseJson
 import java.util.UUID
+import kotlin.uuid.Uuid
+import kotlin.uuid.toKotlinUuid
 
 private const val BASE_URL = "http://spinosaurus"
-private val ID_1 = UUID.randomUUID()
-private val ID_2 = UUID.randomUUID()
+private val ID_1 = UUID.randomUUID().toKotlinUuid()
+private val ID_2 = UUID.randomUUID().toKotlinUuid()
 
 class RefusjonskravKlientTest :
     FunSpec({
@@ -100,7 +102,7 @@ class RefusjonskravKlientTest :
     })
 
 private fun mockSpinosaurus(
-    forventedeIder: List<UUID>,
+    forventedeIder: List<Uuid>,
     responsBody: String,
     status: HttpStatusCode = HttpStatusCode.OK,
 ): HttpClient =

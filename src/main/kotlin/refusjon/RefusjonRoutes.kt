@@ -19,6 +19,7 @@ import no.nav.helsearbeidsgiver.utils.toUuidOrNull
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import org.slf4j.LoggerFactory
 import java.util.UUID
+import kotlin.uuid.toKotlinUuid
 
 private val logger = LoggerFactory.getLogger("RefusjonRoutes")
 
@@ -43,7 +44,7 @@ fun Route.vedtakRoutes(
 
         logger.info("Mottok arbeidstakervedtak for vedtaksperiodeId ${melding.vedtaksperiodeId}.")
 
-        val refusjonUtfallId = UUID.randomUUID()
+        val refusjonUtfallId = UUID.randomUUID().toKotlinUuid()
 
         val inntektsmeldingIder = melding.dokumenter.filter { it.type == Dokument.Type.Inntektsmelding }.map { it.dokumentId }
         val refusjonskrav = refusjonskravService.hentRefusjonskrav(inntektsmeldingIder = inntektsmeldingIder)

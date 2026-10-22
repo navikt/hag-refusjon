@@ -33,6 +33,7 @@ import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
+import kotlin.uuid.toKotlinUuid
 
 class SisConsumerTest :
     FunSpec({
@@ -92,7 +93,7 @@ class SisConsumerTest :
             val repository = mockk<ArbeidstakerVedtakRepository>()
             every { repository.lagre(vedtak, topic, 0, 0L) } answers {
                 kafka.committed(setOf(partition))[partition] shouldBe null
-                UUID.randomUUID()
+                UUID.randomUUID().toKotlinUuid()
             }
 
             SisConsumer(kafka, topic, tolker, repository).poll()
@@ -170,7 +171,7 @@ class SisConsumerTest :
                 kafka.addRecord(ConsumerRecord(topic, 0, 0L, "key", vedtakJson()))
             }
             val repository = mockk<ArbeidstakerVedtakRepository>()
-            every { repository.lagre(any(), any(), any(), any()) } returns UUID.randomUUID()
+            every { repository.lagre(any(), any(), any(), any()) } returns UUID.randomUUID().toKotlinUuid()
 
             shouldThrow<CommitFailedException> {
                 SisConsumer(kafka, topic, tolker, repository).kjoer()

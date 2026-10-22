@@ -1,7 +1,7 @@
 package no.nav.helsearbeidsgiver.refusjonskrav
 
 import no.nav.helsearbeidsgiver.auth.AzureAdTokenHenter
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 class RefusjonskravService(
     private val refusjonskravKlient: RefusjonskravKlient,
@@ -16,7 +16,7 @@ class RefusjonskravService(
         repository = repository,
     )
 
-    suspend fun hentRefusjonskrav(inntektsmeldingIder: List<UUID>): List<InntektsmeldingRefusjonskrav> {
+    suspend fun hentRefusjonskrav(inntektsmeldingIder: List<Uuid>): List<InntektsmeldingRefusjonskrav> {
         val refusjonskrav = hentFraDatabase(inntektsmeldingIder)
         val manglende = inntektsmeldingIder.distinct() - refusjonskrav.map { it.inntektsmeldingId }.toSet()
         if (manglende.isEmpty()) return refusjonskrav
@@ -24,8 +24,8 @@ class RefusjonskravService(
         return refusjonskrav + hentFraKlientOgLagre(manglende)
     }
 
-    private fun hentFraDatabase(inntektsmeldingIder: List<UUID>): List<InntektsmeldingRefusjonskrav> = repository.hent(inntektsmeldingIder)
+    private fun hentFraDatabase(inntektsmeldingIder: List<Uuid>): List<InntektsmeldingRefusjonskrav> = repository.hent(inntektsmeldingIder)
 
-    private suspend fun hentFraKlientOgLagre(inntektsmeldingIder: List<UUID>): List<InntektsmeldingRefusjonskrav> =
+    private suspend fun hentFraKlientOgLagre(inntektsmeldingIder: List<Uuid>): List<InntektsmeldingRefusjonskrav> =
         refusjonskravKlient.hentRefusjonskrav(inntektsmeldingIder).also { repository.lagre(it) }
 }

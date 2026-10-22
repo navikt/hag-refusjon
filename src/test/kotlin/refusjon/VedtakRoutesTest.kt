@@ -50,6 +50,8 @@ import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.uuid.Uuid
+import kotlin.uuid.toKotlinUuid
 
 private const val ARBEIDSGIVER_NAVN = "Billys Bollefabrikk AS"
 private const val SYKMELDT_NAVN = "Ola Nordmann"
@@ -111,7 +113,7 @@ class VedtakRoutesTest :
                     .fromJson(RefusjonUtfall.serializer()) shouldBe
                     RefusjonUtfall(
                         refusjonUtfallId = refusjonsutfallId!!,
-                        vedtaksperiodeId = UUID.fromString("c62594af-f0b8-4fd1-88f2-07e1b15dd906"),
+                        vedtaksperiodeId = Uuid.parse("c62594af-f0b8-4fd1-88f2-07e1b15dd906"),
                         fnr = FNR,
                         orgnr = ORGNR,
                         fom = LocalDate.of(2026, 7, 28),
@@ -377,7 +379,7 @@ class VedtakRoutesTest :
         }
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf svarer med PDF fra bucket") {
-            val refusjonsutfallId = UUID.randomUUID()
+            val refusjonsutfallId = UUID.randomUUID().toKotlinUuid()
             val bucketStorage = FakeBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
 
             testApplication {
@@ -442,8 +444,39 @@ class VedtakRoutesTest :
             }
         }
 
+        val lagretId = UUID.randomUUID().toKotlinUuid()
+        listOf(
+            "hex uten bindestreker" to lagretId.toHexString(),
+            "for kort id" to lagretId.toString().dropLast(1),
+            "for lang id" to "${lagretId}0",
+            "ikke-hex-tegn i riktig format" to "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz",
+            "korte segmenter" to "1-1-1-1-1",
+        ).forEach { (beskrivelse, ugyldigId) ->
+            test("GET /refusjonsutfall/{refusjonsutfallId}/pdf svarer Bad Request for refusjonsutfallId med $beskrivelse") {
+                val bucketStorage = FakeBucketStorage().apply { lagrePdf(lagretId, pdfBytes) }
+
+                testApplication {
+                    application {
+                        module(
+                            bucketStorage,
+                            RefusjonProducer(mockProducer(), TEST_TOPIC),
+                            virksomhetsnavnKlientMock(),
+                            pdlServiceMock(),
+                            arkivServiceMock(),
+                            FakeTokenValidator(),
+                            refusjonskravService,
+                        )
+                    }
+
+                    val response = client.get("/refusjonsutfall/$ugyldigId/pdf") { bearerAuth(GYLDIG_TOKEN) }
+
+                    response.status shouldBe HttpStatusCode.BadRequest
+                }
+            }
+        }
+
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf med ugyldig token svarer Unauthorized") {
-            val refusjonsutfallId = UUID.randomUUID()
+            val refusjonsutfallId = UUID.randomUUID().toKotlinUuid()
             val bucketStorage = FakeBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
 
             testApplication {
@@ -466,7 +499,7 @@ class VedtakRoutesTest :
         }
 
         test("GET /refusjonsutfall/{refusjonsutfallId}/pdf uten token svarer Unauthorized") {
-            val refusjonsutfallId = UUID.randomUUID()
+            val refusjonsutfallId = UUID.randomUUID().toKotlinUuid()
             val bucketStorage = FakeBucketStorage().apply { lagrePdf(refusjonsutfallId, pdfBytes) }
 
             testApplication {
