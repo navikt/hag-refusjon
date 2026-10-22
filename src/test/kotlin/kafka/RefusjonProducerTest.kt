@@ -16,15 +16,16 @@ import no.nav.helsearbeidsgiver.vedtak.arbeidstakerVedtakMeldingMock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.uuid.toKotlinUuid
 
 class RefusjonProducerTest :
     FunSpec({
-        val vedtaksperiodeId = UUID.randomUUID()
+        val vedtaksperiodeId = UUID.randomUUID().toKotlinUuid()
         val fnr = Fnr.genererGyldig()
         val orgnr = Orgnr.genererGyldig()
         val refusjonUtfall =
             RefusjonUtfall(
-                refusjonUtfallId = UUID.randomUUID(),
+                refusjonUtfallId = UUID.randomUUID().toKotlinUuid(),
                 vedtaksperiodeId = vedtaksperiodeId,
                 fnr = fnr,
                 orgnr = orgnr,

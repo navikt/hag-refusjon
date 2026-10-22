@@ -16,17 +16,16 @@ import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import no.nav.helsearbeidsgiver.vedtak.arbeidstakerVedtakMeldingMock
-import java.time.LocalDate
-import java.time.LocalDateTime
 import java.util.Base64
 import java.util.UUID
+import kotlin.uuid.toKotlinUuid
 
 class ArkivServiceTest :
     FunSpec({
         test("arkiverer PDF som utgående journalpost med ARKIV-variant og returnerer journalpostId") {
             val fnr = Fnr.genererGyldig()
             val orgnr = Orgnr.genererGyldig()
-            val refusjonUtfallId = UUID.randomUUID()
+            val refusjonUtfallId = UUID.randomUUID().toKotlinUuid()
             val pdf = "PDF innhold".toByteArray()
 
             val mottaker = slot<Mottaker>()

@@ -29,7 +29,6 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.LocalDate
-import kotlin.uuid.toKotlinUuid
 
 class ArbeidstakerVedtakRepositoryTest :
     FunSpec({
@@ -75,15 +74,14 @@ class ArbeidstakerVedtakRepositoryTest :
         }
 
         test("lagrer vedtak som JSONB med søkefelt og refusjonUtfallId") {
-            // repo.lagre() returnerer javaUUID, men entitetens type som vi skal sammenligne med er type kotlinUuid.
-            val id = repository.lagre(vedtak, topic, 0, 10L).toKotlinUuid()
+            val id = repository.lagre(vedtak, topic, 0, 10L)
 
             val rad = rader().single()
             rad[ArbeidstakerVedtakEntitet.refusjonUtfallId] shouldBe id
             rad[ArbeidstakerVedtakEntitet.kafkaTopic] shouldBe topic
             rad[ArbeidstakerVedtakEntitet.kafkaPartition] shouldBe 0
             rad[ArbeidstakerVedtakEntitet.kafkaOffset] shouldBe 10L
-            rad[ArbeidstakerVedtakEntitet.vedtaksperiodeId] shouldBe vedtak.vedtaksperiodeId.toKotlinUuid()
+            rad[ArbeidstakerVedtakEntitet.vedtaksperiodeId] shouldBe vedtak.vedtaksperiodeId
             rad[ArbeidstakerVedtakEntitet.fnr] shouldBe vedtak.foedselsnummer.toString()
             rad[ArbeidstakerVedtakEntitet.orgnr] shouldBe vedtak.organisasjonsnummer.toString()
             rad[ArbeidstakerVedtakEntitet.melding] shouldBe vedtak
