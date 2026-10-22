@@ -39,7 +39,7 @@ class RefusjonskravRepositoryTest :
             postgres.stop()
         }
 
-        test("lagrer og henter refusjonskrav, også uten refusjon") {
+        test("lagrer og henter refusjonskrav, uten refusjon og med endringer") {
             val medRefusjon = krav()
             val utenRefusjon = krav(refusjon = null)
             val medRefusjonsEndringer =
