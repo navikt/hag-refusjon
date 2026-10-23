@@ -1,10 +1,10 @@
 package no.nav.helsearbeidsgiver.kafka
 
 import kotlinx.serialization.Serializable
+import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
+import no.nav.helsearbeidsgiver.refusjon.SisEventName
+import no.nav.helsearbeidsgiver.refusjon.Yrkesaktivitetstype
 import no.nav.helsearbeidsgiver.utils.json.fromJson
-import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakMelding
-import no.nav.helsearbeidsgiver.vedtak.SisEventName
-import no.nav.helsearbeidsgiver.vedtak.Yrkesaktivitetstype
 
 class SisTolker {
     fun lesMelding(melding: String): ArbeidstakerVedtakMelding? {

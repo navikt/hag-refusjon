@@ -7,7 +7,7 @@ import no.nav.helsearbeidsgiver.dokarkiv.domene.DokumentVariant
 import no.nav.helsearbeidsgiver.dokarkiv.domene.GjelderPerson
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Kanal
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Mottaker
-import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakMelding
+import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
 import java.util.Base64
 import java.util.UUID
 import kotlin.uuid.Uuid
