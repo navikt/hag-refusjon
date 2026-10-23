@@ -12,6 +12,7 @@ import kotlinx.serialization.encoding.Encoder
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateSerializer
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateTimeSerializer
 import no.nav.helsearbeidsgiver.utils.log.logger
+import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import java.time.LocalDate
@@ -21,13 +22,16 @@ import kotlin.uuid.Uuid
 @Serializable
 data class ArbeidstakerVedtakMelding(
     val eventName: SisEventName,
-    @SerialName("fødselsnummer") val foedselsnummer: Fnr,
+    @SerialName("fødselsnummer")
+    val foedselsnummer: Fnr,
     val yrkesaktivitetstype: Yrkesaktivitetstype,
     val organisasjonsnummer: Orgnr,
     val vedtaksperiodeId: Uuid,
+    val behandlingId: Uuid,
     val fom: LocalDate,
     val tom: LocalDate,
-    @SerialName("skjæringstidspunkt") val skjaeringstidspunkt: LocalDate,
+    @SerialName("skjæringstidspunkt")
+    val skjaeringstidspunkt: LocalDate,
     val dokumenter: List<Dokument>,
     val sykepengegrunnlag: Double,
     val utbetalingsdager: List<Utbetalingsdag> = emptyList(),
@@ -38,7 +42,8 @@ data class ArbeidstakerVedtakMelding(
     val beslutterIdent: String?,
     val beslutterNavn: String?,
     val automatiskFattet: Boolean,
-    @SerialName("harArbeidsgiverØnsketRefusjon") val harArbeidsgiverOensketRefusjon: Boolean,
+    @SerialName("harArbeidsgiverØnsketRefusjon")
+    val harArbeidsgiverOensketRefusjon: Boolean,
 )
 
 @Serializable
@@ -84,8 +89,50 @@ data class Dokument(
 data class Utbetalingsdag(
     val dato: LocalDate,
     @Serializable(with = UtbetalingsdagtypeSerializer::class) val type: Utbetalingsdagtype,
+    val sykdomsgrad: Int,
+    val dekningsgrad: Int,
+    @SerialName("beløpTilBruker") val beloepTilBruker: Int,
     @SerialName("beløpTilArbeidsgiver") val beloepTilArbeidsgiver: Int,
+    val forespurtRefusjon: ForespurtRefusjon,
+    val begrunnelser: List<String>,
 )
+
+@Serializable
+data class ForespurtRefusjon(
+    @SerialName("beløp") val beloep: Int,
+    @Serializable(with = AvsenderSerializer::class) val avsender: Avsender,
+    val sasInntektsmeldingReferanse: Uuid? = null,
+    val hagInntektsmeldingReferanse: Uuid? = null,
+)
+
+@Serializable
+enum class Avsender {
+    ARBEIDSGIVER,
+    SAKSBEHANDLER,
+    UKJENT,
+}
+
+// Ukjente avsendere mappes til UKJENT i stedet for å feile hele meldingen.
+object AvsenderSerializer : KSerializer<Avsender> {
+    private val standardSerializer = Avsender.serializer()
+
+    private val avsenderPerNavn: Map<String, Avsender> =
+        Avsender.entries.associateBy { standardSerializer.descriptor.getElementName(it.ordinal) }
+
+    override val descriptor: SerialDescriptor = standardSerializer.descriptor
+
+    override fun serialize(
+        encoder: Encoder,
+        value: Avsender,
+    ) = standardSerializer.serialize(encoder, value)
+
+    override fun deserialize(decoder: Decoder): Avsender {
+        val navn = decoder.decodeString()
+        return avsenderPerNavn[navn] ?: Avsender.UKJENT.also {
+            sikkerLogger().warn("Mottok ukjent avsender '$navn' i forespurt refusjon på tbd.sis, bruker UKJENT")
+        }
+    }
+}
 
 // Nye dagtyper dukker jevnlig opp i sis. Ukjente verdier mappes til UKJENT_DAG i stedet for å feile hele meldingen.
 object UtbetalingsdagtypeSerializer : KSerializer<Utbetalingsdagtype> {

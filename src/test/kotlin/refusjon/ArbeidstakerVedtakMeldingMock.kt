@@ -17,6 +17,7 @@ fun arbeidstakerVedtakMeldingMock(
         yrkesaktivitetstype = Yrkesaktivitetstype.ARBEIDSTAKER,
         organisasjonsnummer = orgnr,
         vedtaksperiodeId = UUID.randomUUID().toKotlinUuid(),
+        behandlingId = UUID.randomUUID().toKotlinUuid(),
         fom = LocalDate.of(2026, 7, 28),
         tom = LocalDate.of(2026, 8, 3),
         skjaeringstidspunkt = LocalDate.of(2026, 7, 1),
@@ -30,4 +31,26 @@ fun arbeidstakerVedtakMeldingMock(
         beslutterNavn = null,
         automatiskFattet = true,
         harArbeidsgiverOensketRefusjon = true,
+    )
+
+fun utbetalingsdagMock(
+    dato: LocalDate = LocalDate.of(2026, 7, 28),
+    type: Utbetalingsdagtype = Utbetalingsdagtype.NAV_DAG,
+    avsender: Avsender = Avsender.ARBEIDSGIVER,
+): Utbetalingsdag =
+    Utbetalingsdag(
+        dato = dato,
+        type = type,
+        sykdomsgrad = 100,
+        dekningsgrad = 100,
+        beloepTilBruker = 0,
+        beloepTilArbeidsgiver = 1000,
+        forespurtRefusjon =
+            ForespurtRefusjon(
+                beloep = 1000,
+                avsender = avsender,
+                sasInntektsmeldingReferanse = null,
+                hagInntektsmeldingReferanse = UUID.randomUUID().toKotlinUuid(),
+            ),
+        begrunnelser = emptyList(),
     )

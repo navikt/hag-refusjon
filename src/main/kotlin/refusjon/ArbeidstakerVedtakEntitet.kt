@@ -6,16 +6,12 @@ import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 import org.jetbrains.exposed.v1.json.jsonb
 
 object ArbeidstakerVedtakEntitet : Table("arbeidstaker_vedtak") {
-    val id = long("id").autoIncrement()
-    val refusjonUtfallId = uuid("refusjon_utfall_id")
-    val kafkaTopic = text("kafka_topic")
-    val kafkaPartition = integer("kafka_partition")
-    val kafkaOffset = long("kafka_offset")
+    val behandlingId = uuid("behandling_id")
     val vedtaksperiodeId = uuid("vedtaksperiode_id")
     val fnr = text("fnr")
     val orgnr = text("orgnr")
     val melding = jsonb("melding", jsonConfig, ArbeidstakerVedtakMelding.serializer())
     val opprettet = timestampWithTimeZone("opprettet")
 
-    override val primaryKey = PrimaryKey(id)
+    override val primaryKey = PrimaryKey(behandlingId)
 }
