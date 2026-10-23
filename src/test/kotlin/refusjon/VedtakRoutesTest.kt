@@ -577,12 +577,13 @@ private fun gyldigMelding(
       "organisasjonsnummer": "$orgnr",
       "yrkesaktivitetstype": "ARBEIDSTAKER",
       "vedtaksperiodeId": "c62594af-f0b8-4fd1-88f2-07e1b15dd906",
+      "behandlingId": "5f1c3a1e-7b0e-4d3b-9a43-3c2f1f0d9a11",
       "fom": "2026-07-28",
       "tom": "2026-08-03",
       "skjæringstidspunkt": "2026-07-01",
       "dokumenter": [
         {
-          "dokumentId": "be3ec904-4dd6-3bbd-89a9-945b23b5f1be",
+          "dokumentId": "a762f7c3-db3a-4f4b-872b-d37642ea69ba",
           "type": "Søknad"
         }
       ],
@@ -591,7 +592,17 @@ private fun gyldigMelding(
         {
           "dato": "2026-07-28",
           "type": "NavDag",
-          "beløpTilArbeidsgiver": 1431
+          "sykdomsgrad": 100,
+          "dekningsgrad": 100,
+          "beløpTilBruker": 0,
+          "beløpTilArbeidsgiver": 1431,
+          "forespurtRefusjon": {
+            "beløp": 1431,
+            "avsender": "ARBEIDSGIVER",
+            "sasInntektsmeldingReferanse": null,
+            "hagInntektsmeldingReferanse": "65f84fa6-554e-4200-9466-30fc7e1ffb2e"
+          },
+          "begrunnelser": []
         }
       ],
       "vedtakFattetTidspunkt": "2026-08-05T13:03:25.166498222",

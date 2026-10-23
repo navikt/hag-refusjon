@@ -15,10 +15,11 @@ import kotlinx.coroutines.yield
 import kotlinx.serialization.SerializationException
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
-import no.nav.helsearbeidsgiver.refusjon.Utbetalingsdag
+import no.nav.helsearbeidsgiver.refusjon.Avsender
 import no.nav.helsearbeidsgiver.refusjon.Utbetalingsdagtype
 import no.nav.helsearbeidsgiver.refusjon.Yrkesaktivitetstype
 import no.nav.helsearbeidsgiver.refusjon.arbeidstakerVedtakMeldingMock
+import no.nav.helsearbeidsgiver.refusjon.utbetalingsdagMock
 import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
@@ -67,7 +68,7 @@ class SisConsumerTest :
         }
 
         test("bruker UKJENT_DAG for ukjente utbetalingsdagtyper") {
-            val utbetalingsdag = Utbetalingsdag(LocalDate.of(2026, 7, 28), Utbetalingsdagtype.NAV_DAG, 1000)
+            val utbetalingsdag = utbetalingsdagMock()
             val json =
                 vedtakJson(vedtak.copy(utbetalingsdager = listOf(utbetalingsdag)))
                     .replace("\"NavDag\"", "\"EnNyDagtype\"")
@@ -75,6 +76,30 @@ class SisConsumerTest :
             val resultat = tolker.lesMelding(json)
 
             resultat?.utbetalingsdager?.single()?.type shouldBe Utbetalingsdagtype.UKJENT_DAG
+        }
+
+        test("mapper ukjent avsender til UKJENT og beholder kjente avsendere") {
+            val dager =
+                listOf(
+                    utbetalingsdagMock(avsender = Avsender.ARBEIDSGIVER),
+                    utbetalingsdagMock(avsender = Avsender.SAKSBEHANDLER),
+                    utbetalingsdagMock(avsender = Avsender.UKJENT),
+                )
+            val json =
+                vedtakJson(vedtak.copy(utbetalingsdager = dager))
+                    .replace("\"UKJENT\"", "\"NOE_NYTT\"")
+
+            tolker
+                .lesMelding(json)
+                ?.utbetalingsdager
+                ?.map { it.forespurtRefusjon.avsender } shouldBe
+                listOf(Avsender.ARBEIDSGIVER, Avsender.SAKSBEHANDLER, Avsender.UKJENT)
+        }
+
+        test("avviser vedtak uten behandlingId") {
+            val json = vedtakJson().replace("\"behandlingId\"", "\"annenId\"")
+
+            shouldThrow<SerializationException> { tolker.lesMelding(json) }
         }
 
         val partition = TopicPartition(topic, 0)
@@ -91,14 +116,14 @@ class SisConsumerTest :
         test("lagrer vedtak før offset bekreftes") {
             val kafka = mockConsumer(vedtakJson())
             val repository = mockk<ArbeidstakerVedtakRepository>()
-            every { repository.lagre(vedtak, topic, 0, 0L) } answers {
+            every { repository.lagre(vedtak) } answers {
                 kafka.committed(setOf(partition))[partition] shouldBe null
                 UUID.randomUUID().toKotlinUuid()
             }
 
             SisConsumer(kafka, topic, tolker, repository).poll()
 
-            verify(exactly = 1) { repository.lagre(vedtak, topic, 0, 0L) }
+            verify(exactly = 1) { repository.lagre(vedtak) }
             kafka.committed(setOf(partition))[partition]?.offset() shouldBe 1L
             kafka.close()
         }
@@ -114,7 +139,7 @@ class SisConsumerTest :
 
             SisConsumer(kafka, topic, tolker, repository).poll()
 
-            verify(exactly = 0) { repository.lagre(any(), any(), any(), any()) }
+            verify(exactly = 0) { repository.lagre(any()) }
             kafka.committed(setOf(partition))[partition]?.offset() shouldBe 3L
             kafka.close()
         }
@@ -127,7 +152,7 @@ class SisConsumerTest :
                 SisConsumer(kafka, topic, tolker, repository).poll()
             }
 
-            verify(exactly = 0) { repository.lagre(any(), any(), any(), any()) }
+            verify(exactly = 0) { repository.lagre(any()) }
             kafka.committed(setOf(partition))[partition] shouldBe null
             kafka.close()
         }
@@ -136,20 +161,19 @@ class SisConsumerTest :
             val kafka = mockConsumer(vedtakJson(), vedtakJson())
             val repository = mockk<ArbeidstakerVedtakRepository>()
             val failure = IllegalStateException("Databasen er utilgjengelig")
-            every { repository.lagre(any(), any(), any(), any()) } throws failure
+            every { repository.lagre(any()) } throws failure
 
             shouldThrow<IllegalStateException> {
                 SisConsumer(kafka, topic, tolker, repository).poll()
             } shouldBe failure
 
-            verify(exactly = 1) { repository.lagre(vedtak, topic, 0, 0L) }
-            verify(exactly = 0) { repository.lagre(any(), any(), any(), 1L) }
+            verify(exactly = 1) { repository.lagre(any()) }
             kafka.committed(setOf(partition))[partition] shouldBe null
             kafka.close()
         }
 
         test("lukker Kafka-klienten når henting av meldinger feiler") {
-            val mockConsumer = MockConsumer<String, String>(OffsetResetStrategy.EARLIEST)
+            val mockConsumer = MockConsumer<String, String>("earliest")
             val failure = KafkaException("Polling feilet")
             mockConsumer.setPollException(failure)
 
@@ -162,7 +186,7 @@ class SisConsumerTest :
 
         test("lukker Kafka-klienten når bekreftelse av offset feiler") {
             val kafka =
-                object : MockConsumer<String, String>(OffsetResetStrategy.EARLIEST) {
+                object : MockConsumer<String, String>("earliest") {
                     override fun commitSync(): Unit = throw CommitFailedException("Rebalansering")
                 }
             kafka.schedulePollTask {
@@ -171,7 +195,7 @@ class SisConsumerTest :
                 kafka.addRecord(ConsumerRecord(topic, 0, 0L, "key", vedtakJson()))
             }
             val repository = mockk<ArbeidstakerVedtakRepository>()
-            every { repository.lagre(any(), any(), any(), any()) } returns UUID.randomUUID().toKotlinUuid()
+            every { repository.lagre(any()) } returns UUID.randomUUID().toKotlinUuid()
 
             shouldThrow<CommitFailedException> {
                 SisConsumer(kafka, topic, tolker, repository).kjoer()
@@ -181,7 +205,7 @@ class SisConsumerTest :
         }
 
         test("lukker Kafka-klienten ved kansellering") {
-            val kafka = MockConsumer<String, String>(OffsetResetStrategy.EARLIEST)
+            val kafka = MockConsumer<String, String>("earliest")
             val polled = AtomicBoolean(false)
             kafka.schedulePollTask { polled.set(true) }
 

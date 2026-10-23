@@ -23,12 +23,12 @@ import org.apache.kafka.clients.consumer.CommitFailedException
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.MockConsumer
 import org.apache.kafka.common.TopicPartition
-import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.jdbc.deleteAll
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.testcontainers.containers.PostgreSQLContainer
-import java.time.LocalDate
+import java.util.UUID
+import kotlin.uuid.toKotlinUuid
 
 class ArbeidstakerVedtakRepositoryTest :
     FunSpec({
@@ -47,7 +47,9 @@ class ArbeidstakerVedtakRepositoryTest :
                 ArbeidstakerVedtakEntitet.selectAll().toList()
             }
 
-        fun vedtakJson() = vedtak.toJson(ArbeidstakerVedtakMelding.serializer()).toString()
+        fun nyBehandling() = vedtak.copy(behandlingId = UUID.randomUUID().toKotlinUuid())
+
+        fun vedtakJson(melding: ArbeidstakerVedtakMelding = vedtak) = melding.toJson(ArbeidstakerVedtakMelding.serializer()).toString()
 
         fun kafka(vararg values: String): MockConsumer<String, String> =
             MockConsumer<String, String>("earliest").apply {
@@ -73,14 +75,12 @@ class ArbeidstakerVedtakRepositoryTest :
             postgres.stop()
         }
 
-        test("lagrer vedtak som JSONB med søkefelt og refusjonUtfallId") {
-            val id = repository.lagre(vedtak, topic, 0, 10L)
+        test("lagrer vedtak som JSONB med søkefelt og behandlingId som primærnøkkel") {
+            val id = repository.lagre(vedtak)
 
+            id shouldBe vedtak.behandlingId
             val rad = rader().single()
-            rad[ArbeidstakerVedtakEntitet.refusjonUtfallId] shouldBe id
-            rad[ArbeidstakerVedtakEntitet.kafkaTopic] shouldBe topic
-            rad[ArbeidstakerVedtakEntitet.kafkaPartition] shouldBe 0
-            rad[ArbeidstakerVedtakEntitet.kafkaOffset] shouldBe 10L
+            rad[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
             rad[ArbeidstakerVedtakEntitet.vedtaksperiodeId] shouldBe vedtak.vedtaksperiodeId
             rad[ArbeidstakerVedtakEntitet.fnr] shouldBe vedtak.foedselsnummer.toString()
             rad[ArbeidstakerVedtakEntitet.orgnr] shouldBe vedtak.organisasjonsnummer.toString()
@@ -94,42 +94,30 @@ class ArbeidstakerVedtakRepositoryTest :
             }
         }
 
-        test("beholder ID, innhold og opprettelsestidspunkt når samme melding lagres på nytt") {
-            val id = repository.lagre(vedtak, topic, 0, 10L)
+        test("beholder innhold og opprettelsestidspunkt når samme behandling lagres på nytt") {
+            val id = repository.lagre(vedtak)
             val foersteRad = rader().single()
 
-            repository.lagre(vedtak.copy(sykepengegrunnlag = 1.0), topic, 0, 10L) shouldBe id
+            repository.lagre(vedtak.copy(sykepengegrunnlag = 1.0)) shouldBe id
 
             val rad = rader().single()
             rad[ArbeidstakerVedtakEntitet.melding] shouldBe vedtak
             rad[ArbeidstakerVedtakEntitet.opprettet] shouldBe foersteRad[ArbeidstakerVedtakEntitet.opprettet]
         }
 
-        test("lagrer flere hendelser for samme vedtaksperiode") {
-            val foersteId = repository.lagre(vedtak, topic, 0, 10L)
-            val andreId = repository.lagre(vedtak.copy(sykepengegrunnlag = 1.0), topic, 0, 11L)
+        test("lagrer flere behandlinger for samme vedtaksperiode") {
+            val foersteId = repository.lagre(vedtak)
+            val andreId = repository.lagre(nyBehandling().copy(sykepengegrunnlag = 1.0))
 
             andreId shouldNotBe foersteId
             rader() shouldHaveSize 2
-        }
-
-        test("lagrer meldinger med samme offset separat når topic eller partisjon er forskjellig") {
-            val ids =
-                setOf(
-                    repository.lagre(vedtak, topic, 0, 10L),
-                    repository.lagre(vedtak, topic, 1, 10L),
-                    repository.lagre(vedtak, "annet.topic", 0, 10L),
-                )
-
-            ids.size shouldBe 3
-            rader() shouldHaveSize 3
         }
 
         test("lagrer samme melding bare én gang ved samtidige forsøk") {
             val ids =
                 coroutineScope {
                     List(3) {
-                        async(Dispatchers.IO) { repository.lagre(vedtak, topic, 0, 10L) }
+                        async(Dispatchers.IO) { repository.lagre(vedtak) }
                     }.awaitAll()
                 }
 
@@ -142,11 +130,7 @@ class ArbeidstakerVedtakRepositoryTest :
                 vedtak.copy(
                     utbetalingsdager =
                         listOf(
-                            Utbetalingsdag(
-                                LocalDate.of(2026, 7, 28),
-                                Utbetalingsdagtype.NAV_DAG,
-                                1000,
-                            ),
+                            utbetalingsdagMock(),
                         ),
                 )
             val json =
@@ -156,7 +140,7 @@ class ArbeidstakerVedtakRepositoryTest :
                     .replace("\"NavDag\"", "\"EnNyDagtype\"")
                     .replaceFirst("{", """{"ekstraFelt":"lagres ikke",""")
 
-            repository.lagre(checkNotNull(tolker.lesMelding(json)), topic, 0, 0L)
+            repository.lagre(checkNotNull(tolker.lesMelding(json)))
 
             rader()
                 .single()[ArbeidstakerVedtakEntitet.melding]
@@ -171,40 +155,26 @@ class ArbeidstakerVedtakRepositoryTest :
             }
         }
 
-        test("kaster feil ved brudd på en databasebegrensning") {
-            transaction(db()) {
-                exec("ALTER TABLE arbeidstaker_vedtak ADD CONSTRAINT test_offset CHECK (kafka_offset >= 0)")
-            }
-            try {
-                shouldThrow<ExposedSQLException> {
-                    repository.lagre(vedtak, topic, 0, -1L)
-                }
-                rader() shouldHaveSize 0
-            } finally {
-                transaction(db()) {
-                    exec("ALTER TABLE arbeidstaker_vedtak DROP CONSTRAINT test_offset")
-                }
-            }
-        }
-
-        test("beholder lagrede ID-er ved nytt forsøk etter databasefeil") {
+        test("beholder lagrede rader ved nytt forsøk etter databasefeil") {
+            val andreVedtak = nyBehandling()
             val feilendeRepository = spyk(repository)
-            every { feilendeRepository.lagre(any(), topic, 0, 1L) } throws IllegalStateException("Databasefeil")
-            val foerste = kafka(vedtakJson(), vedtakJson())
+            every { feilendeRepository.lagre(andreVedtak) } throws IllegalStateException("Databasefeil")
+            val foerste = kafka(vedtakJson(), vedtakJson(andreVedtak))
 
             shouldThrow<IllegalStateException> {
                 SisConsumer(foerste, topic, tolker, feilendeRepository).poll()
             }
             foerste.committed(setOf(partition))[partition] shouldBe null
-            val id = rader().single()[ArbeidstakerVedtakEntitet.refusjonUtfallId]
+            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
             foerste.close()
 
-            val replay = kafka(vedtakJson(), vedtakJson())
+            val replay = kafka(vedtakJson(), vedtakJson(andreVedtak))
             SisConsumer(replay, topic, tolker, repository).poll()
 
             val lagrede = rader()
             lagrede shouldHaveSize 2
-            lagrede.single { it[ArbeidstakerVedtakEntitet.kafkaOffset] == 0L }[ArbeidstakerVedtakEntitet.refusjonUtfallId] shouldBe id
+            lagrede.map { it[ArbeidstakerVedtakEntitet.behandlingId] }.toSet() shouldBe
+                setOf(vedtak.behandlingId, andreVedtak.behandlingId)
             replay.committed(setOf(partition))[partition]?.offset() shouldBe 2L
             replay.close()
         }
@@ -215,19 +185,19 @@ class ArbeidstakerVedtakRepositoryTest :
                 SisConsumer(foerste, topic, tolker, repository).poll()
             }
             foerste.committed(setOf(partition))[partition] shouldBe null
-            val id = rader().single()[ArbeidstakerVedtakEntitet.refusjonUtfallId]
+            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
             foerste.close()
 
             val replay = kafka(vedtakJson(), "ikke json")
             shouldThrow<SerializationException> {
                 SisConsumer(replay, topic, tolker, repository).poll()
             }
-            rader().single()[ArbeidstakerVedtakEntitet.refusjonUtfallId] shouldBe id
+            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
             replay.committed(setOf(partition))[partition] shouldBe null
             replay.close()
         }
 
-        test("beholder refusjonUtfallId ved nytt forsøk etter feil ved bekreftelse av offset") {
+        test("beholder raden ved nytt forsøk etter feil ved bekreftelse av offset") {
             val foerste = spyk(kafka(vedtakJson()))
             every { foerste.commitSync() } throws CommitFailedException("Rebalansering")
 
@@ -235,13 +205,13 @@ class ArbeidstakerVedtakRepositoryTest :
                 SisConsumer(foerste, topic, tolker, repository).poll()
             }
             foerste.committed(setOf(partition))[partition] shouldBe null
-            val id = rader().single()[ArbeidstakerVedtakEntitet.refusjonUtfallId]
+            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
             foerste.close()
 
             val replay = kafka(vedtakJson())
             SisConsumer(replay, topic, tolker, repository).poll()
 
-            rader().single()[ArbeidstakerVedtakEntitet.refusjonUtfallId] shouldBe id
+            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
             replay.committed(setOf(partition))[partition]?.offset() shouldBe 1L
             replay.close()
         }
