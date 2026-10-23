@@ -1,6 +1,6 @@
 @file:UseSerializers(LocalDateSerializer::class, LocalDateTimeSerializer::class)
 
-package no.nav.helsearbeidsgiver.vedtak
+package no.nav.helsearbeidsgiver.refusjon
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName

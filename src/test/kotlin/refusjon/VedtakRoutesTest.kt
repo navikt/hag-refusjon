@@ -1,4 +1,4 @@
-package no.nav.helsearbeidsgiver.vedtak
+package no.nav.helsearbeidsgiver.refusjon
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -50,6 +50,7 @@ import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.collections.get
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 
@@ -124,7 +125,10 @@ class VedtakRoutesTest :
                         journalpostId = JOURNALPOST_ID,
                         arbeidsgiverNavn = ARBEIDSGIVER_NAVN,
                         sykmeldtNavn = SYKMELDT_NAVN,
-                        arbeidstakerVedtakMelding = gyldigMelding(FNR, ORGNR).parseJson().fromJson(ArbeidstakerVedtakMelding.serializer()),
+                        arbeidstakerVedtakMelding =
+                            gyldigMelding(FNR, ORGNR)
+                                .parseJson()
+                                .fromJson(ArbeidstakerVedtakMelding.serializer()),
                     )
             }
         }

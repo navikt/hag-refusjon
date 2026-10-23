@@ -9,8 +9,6 @@ import io.ktor.server.auth.bearer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import no.nav.helsearbeidsgiver.Env.getPropertyOrNull
 import no.nav.helsearbeidsgiver.Env.isDev
@@ -30,14 +28,14 @@ import no.nav.helsearbeidsgiver.kafka.configureSisConsumer
 import no.nav.helsearbeidsgiver.kafka.createKafkaConsumerConfig
 import no.nav.helsearbeidsgiver.kafka.createKafkaProducerConfig
 import no.nav.helsearbeidsgiver.person.PdlService
+import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
+import no.nav.helsearbeidsgiver.refusjon.pdfRoutes
+import no.nav.helsearbeidsgiver.refusjon.vedtakRoutes
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravRepository
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
 import no.nav.helsearbeidsgiver.utils.cache.LocalCache
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.pipe.orDefault
-import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakRepository
-import no.nav.helsearbeidsgiver.vedtak.pdfRoutes
-import no.nav.helsearbeidsgiver.vedtak.vedtakRoutes
 import no.nav.helsearbeidsgiver.virksomhet.BrregVirksomhetsnavnKlient
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlientMedFallback

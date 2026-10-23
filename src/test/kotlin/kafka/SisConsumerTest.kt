@@ -13,16 +13,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import kotlinx.serialization.SerializationException
+import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
+import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
+import no.nav.helsearbeidsgiver.refusjon.Utbetalingsdag
+import no.nav.helsearbeidsgiver.refusjon.Utbetalingsdagtype
+import no.nav.helsearbeidsgiver.refusjon.Yrkesaktivitetstype
+import no.nav.helsearbeidsgiver.refusjon.arbeidstakerVedtakMeldingMock
 import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
-import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakMelding
-import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakRepository
-import no.nav.helsearbeidsgiver.vedtak.Utbetalingsdag
-import no.nav.helsearbeidsgiver.vedtak.Utbetalingsdagtype
-import no.nav.helsearbeidsgiver.vedtak.Yrkesaktivitetstype
-import no.nav.helsearbeidsgiver.vedtak.arbeidstakerVedtakMeldingMock
 import org.apache.kafka.clients.consumer.CommitFailedException
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.MockConsumer
@@ -80,7 +80,7 @@ class SisConsumerTest :
         val partition = TopicPartition(topic, 0)
 
         fun mockConsumer(vararg values: String?): MockConsumer<String, String> =
-            MockConsumer<String, String>(OffsetResetStrategy.EARLIEST).apply {
+            MockConsumer<String, String>("earliest").apply {
                 assign(listOf(partition))
                 updateBeginningOffsets(mapOf(partition to 0L))
                 values.forEachIndexed { index, value ->
