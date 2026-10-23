@@ -1,4 +1,4 @@
-package no.nav.helsearbeidsgiver.vedtak
+package no.nav.helsearbeidsgiver.refusjon
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
@@ -140,7 +140,14 @@ class ArbeidstakerVedtakRepositoryTest :
         test("utelater ukjente felt og lagrer ukjent dagtype som UKJENT_DAG") {
             val melding =
                 vedtak.copy(
-                    utbetalingsdager = listOf(Utbetalingsdag(LocalDate.of(2026, 7, 28), Utbetalingsdagtype.NAV_DAG, 1000)),
+                    utbetalingsdager =
+                        listOf(
+                            Utbetalingsdag(
+                                LocalDate.of(2026, 7, 28),
+                                Utbetalingsdagtype.NAV_DAG,
+                                1000,
+                            ),
+                        ),
                 )
             val json =
                 melding

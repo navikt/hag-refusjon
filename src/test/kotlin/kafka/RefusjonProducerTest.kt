@@ -5,14 +5,14 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import no.nav.helsearbeidsgiver.refusjon.RefusjonUtfall
+import no.nav.helsearbeidsgiver.refusjon.Utfall
+import no.nav.helsearbeidsgiver.refusjon.arbeidstakerVedtakMeldingMock
 import no.nav.helsearbeidsgiver.utils.json.fromJson
 import no.nav.helsearbeidsgiver.utils.json.parseJson
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
-import no.nav.helsearbeidsgiver.vedtak.RefusjonUtfall
-import no.nav.helsearbeidsgiver.vedtak.Utfall
-import no.nav.helsearbeidsgiver.vedtak.arbeidstakerVedtakMeldingMock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID

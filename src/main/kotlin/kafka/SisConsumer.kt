@@ -11,9 +11,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.nav.helsearbeidsgiver.helsesjekker.ShutDownAppState
+import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
 import no.nav.helsearbeidsgiver.utils.log.logger
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
-import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakRepository
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.Consumer
 import java.time.Duration

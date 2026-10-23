@@ -1,9 +1,9 @@
 package no.nav.helsearbeidsgiver.kafka
 
+import no.nav.helsearbeidsgiver.refusjon.RefusjonUtfall
 import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.json.toPretty
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
-import no.nav.helsearbeidsgiver.vedtak.RefusjonUtfall
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
 import kotlin.uuid.Uuid

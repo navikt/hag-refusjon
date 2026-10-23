@@ -1,4 +1,4 @@
-package no.nav.helsearbeidsgiver.vedtak
+package no.nav.helsearbeidsgiver.refusjon
 
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import org.jetbrains.exposed.v1.core.IntegerColumnType
@@ -13,7 +13,6 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.util.UUID
 import kotlin.uuid.Uuid
-import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
 class ArbeidstakerVedtakRepository(
@@ -30,6 +29,7 @@ class ArbeidstakerVedtakRepository(
             queryTimeout = 10
 
             // Kun konflikt på Kafka-posisjonen er en forventet duplikat.
+            // TODO: bruk behandlingsId som PK når vi får denne. Endre til exposed så vi kan fjerne java UUID
             val nyId =
                 this
                     .exec(

@@ -1,4 +1,4 @@
-package no.nav.helsearbeidsgiver.vedtak
+package no.nav.helsearbeidsgiver.refusjon
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.plugins.BadRequestException
@@ -80,6 +80,7 @@ fun Route.vedtakRoutes(
                 return@post
             }
 
+        // Slå sammen dagliste og refusjonskrav til nytt objekt, stapp dette inn i RefusjonsUtfall
         val pdf =
             try {
                 val generertPdf = genererRefusjonPdf(melding.tilRefusjonUtfallPdfData(arbeidsgiverNavn, sykmeldtNavn))
