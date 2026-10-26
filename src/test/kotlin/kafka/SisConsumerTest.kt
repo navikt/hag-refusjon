@@ -31,10 +31,8 @@ import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.TopicPartition
 import java.time.LocalDate
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
-import kotlin.uuid.toKotlinUuid
 
 class SisConsumerTest :
     FunSpec({
@@ -118,7 +116,7 @@ class SisConsumerTest :
             val repository = mockk<ArbeidstakerVedtakRepository>()
             every { repository.lagre(vedtak) } answers {
                 kafka.committed(setOf(partition))[partition] shouldBe null
-                UUID.randomUUID().toKotlinUuid()
+                true
             }
 
             SisConsumer(kafka, topic, tolker, repository).poll()
@@ -195,7 +193,7 @@ class SisConsumerTest :
                 kafka.addRecord(ConsumerRecord(topic, 0, 0L, "key", vedtakJson()))
             }
             val repository = mockk<ArbeidstakerVedtakRepository>()
-            every { repository.lagre(any()) } returns UUID.randomUUID().toKotlinUuid()
+            every { repository.lagre(any()) } returns true
 
             shouldThrow<CommitFailedException> {
                 SisConsumer(kafka, topic, tolker, repository).kjoer()

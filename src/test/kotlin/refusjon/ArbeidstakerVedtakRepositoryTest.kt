@@ -75,10 +75,9 @@ class ArbeidstakerVedtakRepositoryTest :
             postgres.stop()
         }
 
-        test("lagrer vedtak som JSONB med søkefelt og behandlingId som primærnøkkel") {
-            val id = repository.lagre(vedtak)
+        test("lagrer vedtak som JSONB med vedtaksperiodeId, fnr og orgnr i egne kolonner") {
+            repository.lagre(vedtak) shouldBe true
 
-            id shouldBe vedtak.behandlingId
             val rad = rader().single()
             rad[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
             rad[ArbeidstakerVedtakEntitet.vedtaksperiodeId] shouldBe vedtak.vedtaksperiodeId
@@ -95,10 +94,10 @@ class ArbeidstakerVedtakRepositoryTest :
         }
 
         test("beholder innhold og opprettelsestidspunkt når samme behandling lagres på nytt") {
-            val id = repository.lagre(vedtak)
+            repository.lagre(vedtak) shouldBe true
             val foersteRad = rader().single()
 
-            repository.lagre(vedtak.copy(sykepengegrunnlag = 1.0)) shouldBe id
+            repository.lagre(vedtak.copy(sykepengegrunnlag = 1.0)) shouldBe false
 
             val rad = rader().single()
             rad[ArbeidstakerVedtakEntitet.melding] shouldBe vedtak
@@ -106,22 +105,24 @@ class ArbeidstakerVedtakRepositoryTest :
         }
 
         test("lagrer flere behandlinger for samme vedtaksperiode") {
-            val foersteId = repository.lagre(vedtak)
-            val andreId = repository.lagre(nyBehandling().copy(sykepengegrunnlag = 1.0))
+            val andreVedtak = nyBehandling()
 
-            andreId shouldNotBe foersteId
-            rader() shouldHaveSize 2
+            repository.lagre(vedtak) shouldBe true
+            repository.lagre(andreVedtak) shouldBe true
+
+            rader().map { it[ArbeidstakerVedtakEntitet.behandlingId] }.toSet() shouldBe
+                setOf(vedtak.behandlingId, andreVedtak.behandlingId)
         }
 
         test("lagrer samme melding bare én gang ved samtidige forsøk") {
-            val ids =
+            val resultater =
                 coroutineScope {
                     List(3) {
                         async(Dispatchers.IO) { repository.lagre(vedtak) }
                     }.awaitAll()
                 }
 
-            ids.toSet().size shouldBe 1
+            resultater.count { it } shouldBe 1
             rader() shouldHaveSize 1
         }
 
