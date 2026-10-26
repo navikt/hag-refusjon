@@ -43,7 +43,8 @@ class SisConsumer(
             runCatching {
                 val melding = tolker.lesMelding(value) ?: return@forEach
                 // TODO: lag bg-jobb
-                if (repository.lagre(melding)) {
+                val meldingLagret = repository.lagre(melding)
+                if (meldingLagret) {
                     sikkerLogger.info("Arbeidstakervedtak lagret med behandlingId ${melding.behandlingId}")
                 } else {
                     sikkerLogger.info("Arbeidstakervedtak med behandlingId ${melding.behandlingId} var allerede lagret, ignorerer duplikat")
