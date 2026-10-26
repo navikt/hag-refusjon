@@ -40,11 +40,19 @@ class SisConsumer(
         records.forEach { record ->
             currentCoroutineContext().ensureActive()
             val value = record.value() ?: return@forEach
+
+            // Logger denne for enkel inspeksjon mens vi utvikler og tester. Kan fjernes senere.
+            sikkerLogger.info("Mottok melding på $topic, partition ${record.partition()}, offset ${record.offset()}: $value")
+
             runCatching {
                 val melding = tolker.lesMelding(value) ?: return@forEach
                 // TODO: lag bg-jobb
-                val refusjonUtfallId = repository.lagre(melding, record.topic(), record.partition(), record.offset())
-                sikkerLogger.info("Arbeidstakervedtak lagret med refusjonUtfallId $refusjonUtfallId")
+                val meldingLagret = repository.lagre(melding)
+                if (meldingLagret) {
+                    sikkerLogger.info("Arbeidstakervedtak lagret med behandlingId ${melding.behandlingId}")
+                } else {
+                    sikkerLogger.info("Arbeidstakervedtak med behandlingId ${melding.behandlingId} var allerede lagret, ignorerer duplikat")
+                }
             }.onFailure {
                 sikkerLogger.error(
                     "Klarte ikke å behandle melding på $topic, partition ${record.partition()}, offset ${record.offset()}",
