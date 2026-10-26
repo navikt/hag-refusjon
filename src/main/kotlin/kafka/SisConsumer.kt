@@ -40,6 +40,10 @@ class SisConsumer(
         records.forEach { record ->
             currentCoroutineContext().ensureActive()
             val value = record.value() ?: return@forEach
+
+            // Logger denne for enkel inspeksjon mens vi utvikler og tester. Kan fjernes senere.
+            sikkerLogger.info("Mottok melding på $topic, partition ${record.partition()}, offset ${record.offset()}: $value")
+
             runCatching {
                 val melding = tolker.lesMelding(value) ?: return@forEach
                 // TODO: lag bg-jobb
