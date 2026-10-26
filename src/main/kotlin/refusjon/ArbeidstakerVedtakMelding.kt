@@ -2,17 +2,12 @@
 
 package no.nav.helsearbeidsgiver.refusjon
 
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
+import no.nav.helsearbeidsgiver.utils.FallbackEnumSerializer
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateSerializer
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateTimeSerializer
-import no.nav.helsearbeidsgiver.utils.log.logger
-import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import java.time.LocalDate
@@ -112,50 +107,18 @@ enum class Avsender {
     UKJENT,
 }
 
-// Ukjente avsendere mappes til UKJENT i stedet for å feile hele meldingen.
-object AvsenderSerializer : KSerializer<Avsender> {
-    private val standardSerializer = Avsender.serializer()
+object AvsenderSerializer : FallbackEnumSerializer<Avsender>(
+    entries = Avsender.entries,
+    standardSerializer = Avsender.serializer(),
+    fallback = Avsender.UKJENT,
+)
 
-    private val avsenderPerNavn: Map<String, Avsender> =
-        Avsender.entries.associateBy { standardSerializer.descriptor.getElementName(it.ordinal) }
-
-    override val descriptor: SerialDescriptor = standardSerializer.descriptor
-
-    override fun serialize(
-        encoder: Encoder,
-        value: Avsender,
-    ) = standardSerializer.serialize(encoder, value)
-
-    override fun deserialize(decoder: Decoder): Avsender {
-        val navn = decoder.decodeString()
-        return avsenderPerNavn[navn] ?: Avsender.UKJENT.also {
-            sikkerLogger().warn("Mottok ukjent avsender '$navn' i forespurt refusjon på tbd.sis, bruker UKJENT")
-        }
-    }
-}
-
-// Nye dagtyper dukker jevnlig opp i sis. Ukjente verdier mappes til UKJENT_DAG i stedet for å feile hele meldingen.
-object UtbetalingsdagtypeSerializer : KSerializer<Utbetalingsdagtype> {
-    private val logger = logger()
-    private val standardSerializer = Utbetalingsdagtype.serializer()
-
-    private val dagtypePerNavn: Map<String, Utbetalingsdagtype> =
-        Utbetalingsdagtype.entries.associateBy { standardSerializer.descriptor.getElementName(it.ordinal) }
-
-    override val descriptor: SerialDescriptor = standardSerializer.descriptor
-
-    override fun serialize(
-        encoder: Encoder,
-        value: Utbetalingsdagtype,
-    ) = standardSerializer.serialize(encoder, value)
-
-    override fun deserialize(decoder: Decoder): Utbetalingsdagtype {
-        val navn = decoder.decodeString()
-        return dagtypePerNavn[navn] ?: Utbetalingsdagtype.UKJENT_DAG.also {
-            logger.warn("Mottok ukjent utbetalingsdagtype '$navn' i arbeidstakervedtak på tbd.sis, bruker UKJENT_DAG")
-        }
-    }
-}
+// Nye dagtyper dukker jevnlig opp i sis.
+object UtbetalingsdagtypeSerializer : FallbackEnumSerializer<Utbetalingsdagtype>(
+    entries = Utbetalingsdagtype.entries,
+    standardSerializer = Utbetalingsdagtype.serializer(),
+    fallback = Utbetalingsdagtype.UKJENT_DAG,
+)
 
 @Serializable
 enum class Utbetalingsdagtype {
