@@ -4,7 +4,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import no.nav.helsearbeidsgiver.utils.log.logger
+import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import kotlin.enums.EnumEntries
 
 /** Mapper ukjente enum-verdier til [fallback] i stedet for å feile hele meldingen. */
@@ -13,8 +13,6 @@ abstract class FallbackEnumSerializer<T : Enum<T>>(
     private val standardSerializer: KSerializer<T>,
     private val fallback: T,
 ) : KSerializer<T> {
-    private val logger = logger()
-
     private val valueByName: Map<String, T> =
         entries.associateBy { standardSerializer.descriptor.getElementName(it.ordinal) }
 
@@ -28,7 +26,7 @@ abstract class FallbackEnumSerializer<T : Enum<T>>(
     override fun deserialize(decoder: Decoder): T {
         val name = decoder.decodeString()
         return valueByName[name] ?: fallback.also {
-            logger.warn("Mottok ukjent verdi '$name' for ${descriptor.serialName}, fallbacker til $fallback")
+            sikkerLogger().warn("Mottok ukjent verdi '$name' for ${descriptor.serialName}, fallbacker til $fallback")
         }
     }
 }

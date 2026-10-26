@@ -86,15 +86,18 @@ data class Utbetalingsdag(
     @Serializable(with = UtbetalingsdagtypeSerializer::class) val type: Utbetalingsdagtype,
     val sykdomsgrad: Int,
     val dekningsgrad: Int,
-    @SerialName("beløpTilBruker") val beloepTilBruker: Int,
-    @SerialName("beløpTilArbeidsgiver") val beloepTilArbeidsgiver: Int,
+    @SerialName("beløpTilBruker")
+    val beloepTilBruker: Int,
+    @SerialName("beløpTilArbeidsgiver")
+    val beloepTilArbeidsgiver: Int,
     val forespurtRefusjon: ForespurtRefusjon,
     val begrunnelser: List<String>,
 )
 
 @Serializable
 data class ForespurtRefusjon(
-    @SerialName("beløp") val beloep: Int,
+    @SerialName("beløp")
+    val beloep: Int,
     @Serializable(with = AvsenderSerializer::class) val avsender: Avsender,
     val sasInntektsmeldingReferanse: Uuid? = null,
     val hagInntektsmeldingReferanse: Uuid? = null,
