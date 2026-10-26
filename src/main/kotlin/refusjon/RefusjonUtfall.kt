@@ -23,9 +23,9 @@ data class RefusjonUtfall(
     val sykepengegrunnlag: Double,
     val utfallTilArbeidsgiver: Utfall,
     val fattetTidspunkt: LocalDateTime,
-    val journalpostId: String,
-    val sykmeldtNavn: String? = null,
-    val arbeidsgiverNavn: String? = null,
+    val sykmeldtNavn: String,
+    val arbeidsgiverNavn: String,
+    val dager: List<Dag>,
     val arbeidstakerVedtakMelding: ArbeidstakerVedtakMelding,
 )
 
@@ -36,29 +36,24 @@ enum class Utfall {
     INNVILGELSE,
 }
 
-fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
-    refusjonsutfallId: Uuid,
-    arbeidsgiverNavn: String,
-    sykmeldtNavn: String,
-    journalpostId: String,
-): RefusjonUtfall =
-    RefusjonUtfall(
-        refusjonUtfallId = refusjonsutfallId,
-        vedtaksperiodeId = vedtaksperiodeId,
-        fnr = foedselsnummer,
-        orgnr = organisasjonsnummer,
-        fom = fom,
-        tom = tom,
-        sykepengegrunnlag = sykepengegrunnlag,
-        utfallTilArbeidsgiver =
-            when (vedtaksUtfallTilArbeidsgiver) {
-                VedtaksUtfall.AVSLAG -> Utfall.AVSLAG
-                VedtaksUtfall.DELVIS_INNVILGELSE -> Utfall.DELVIS_INNVILGELSE
-                VedtaksUtfall.INNVILGELSE -> Utfall.INNVILGELSE
-            },
-        fattetTidspunkt = vedtakFattetTidspunkt,
-        journalpostId = journalpostId,
-        sykmeldtNavn = sykmeldtNavn,
-        arbeidsgiverNavn = arbeidsgiverNavn,
-        arbeidstakerVedtakMelding = this,
-    )
+@Serializable
+data class Dag(
+    val dato: LocalDate,
+    val dagtype: DagType,
+    val beloepUtbetaltTilArbeidsgiver: Int,
+    val beloepKrevdRefusjonPerDag: Int,
+    val beloepKrevdRefusjonPerMaaned: Double?,
+)
+
+@Serializable
+enum class DagType {
+    SYKEPENGER,
+    ARBEIDSGIVERPERIODE,
+    HELG,
+    FRI,
+    FERIE,
+    PERMISJON,
+    ARBEIDSDAG,
+    IKKE_RETT_PAA_SYKEPENGER,
+    UKJENT,
+}

@@ -44,12 +44,6 @@ fun Route.vedtakRoutes(
 
         logger.info("Mottok arbeidstakervedtak for vedtaksperiodeId ${melding.vedtaksperiodeId}.")
 
-        val refusjonUtfallId = UUID.randomUUID().toKotlinUuid()
-
-        val inntektsmeldingIder = melding.dokumenter.filter { it.type == Dokument.Type.Inntektsmelding }.map { it.dokumentId }
-        val refusjonskrav = refusjonskravService.hentRefusjonskrav(inntektsmeldingIder = inntektsmeldingIder)
-        sikkerLogger().info("Hentet refusjonskrav: $refusjonskrav")
-
         // TODO: putt alle oppslag etc i Service / bg-jobb-kode
 
         val arbeidsgiverNavn =
@@ -57,7 +51,7 @@ fun Route.vedtakRoutes(
                 virksomhetsnavnKlient.hentVirksomhetsnavn(melding.organisasjonsnummer)
                     ?: throw IllegalStateException("Fant ikke virksomhetsnavn.")
             } catch (e: Exception) {
-                "Feil ved henting av virksomhetsnavn for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
+                "Feil ved henting av virksomhetsnavn for refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}."
                     .also {
                         logger.error(it)
                         sikkerLogger().error(it, e)
@@ -71,7 +65,7 @@ fun Route.vedtakRoutes(
                 pdlService.hentSykmeldtnavn(melding.foedselsnummer)
                     ?: throw IllegalStateException("Fant ikke sykmeldtnavn.")
             } catch (e: Exception) {
-                "Feil ved henting av sykmeldtnavn for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
+                "Feil ved henting av sykmeldtnavn for refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}."
                     .also {
                         logger.error(it)
                         sikkerLogger().error(it, e)
@@ -80,10 +74,13 @@ fun Route.vedtakRoutes(
                 return@post
             }
 
-        // Slå sammen dagliste og refusjonskrav til nytt objekt, stapp dette inn i RefusjonsUtfall
+        val refusjonskrav = refusjonskravService.hentRefusjonskrav(inntektsmeldingIder = melding.hagInntektsmeldingReferanser())
+        val refusjonUtfallId = UUID.randomUUID().toKotlinUuid()
+        val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, refusjonskrav, arbeidsgiverNavn, sykmeldtNavn)
+
         val pdf =
             try {
-                val generertPdf = genererRefusjonPdf(melding.tilRefusjonUtfallPdfData(arbeidsgiverNavn, sykmeldtNavn))
+                val generertPdf = genererRefusjonPdf(refusjonUtfall.tilRefusjonUtfallPdfData())
                 bucketStorage.lagrePdf(refusjonUtfallId, generertPdf)
                 generertPdf
             } catch (e: Exception) {
@@ -118,10 +115,7 @@ fun Route.vedtakRoutes(
         )
 
         try {
-            refusjonProducer.send(
-                melding.vedtaksperiodeId,
-                melding.tilRefusjonUtfall(refusjonUtfallId, arbeidsgiverNavn, sykmeldtNavn, journalpostId),
-            )
+            refusjonProducer.send(melding.vedtaksperiodeId, refusjonUtfall)
         } catch (e: Exception) {
             "Feil ved publisering av refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
                 .also {

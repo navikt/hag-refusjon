@@ -26,7 +26,7 @@ data class RefusjonUtfallPdfData(
     val tom: LocalDate,
     @SerialName("skjæringstidspunkt") val skjaeringstidspunkt: LocalDate,
     val sykepengegrunnlag: Double,
-    val utbetalingsdager: List<Utbetalingsdag>,
+    val dager: List<Dag>,
     val utbetaltTilArbeidsgiver: Int,
     val vedtakFattetTidspunkt: LocalDateTime,
     val vedtaksUtfallTilArbeidsgiver: VedtaksUtfall,
@@ -38,31 +38,26 @@ data class RefusjonUtfallPdfData(
     @SerialName("harArbeidsgiverØnsketRefusjon") val harArbeidsgiverOensketRefusjon: Boolean,
 )
 
-fun ArbeidstakerVedtakMelding.tilRefusjonUtfallPdfData(
-    arbeidsgiverNavn: String,
-    sykmeldtNavn: String,
-): RefusjonUtfallPdfData =
+fun RefusjonUtfall.tilRefusjonUtfallPdfData(): RefusjonUtfallPdfData =
     RefusjonUtfallPdfData(
-        foedselsnummer = foedselsnummer,
+        foedselsnummer = fnr,
         sykmeldtNavn = sykmeldtNavn,
-        yrkesaktivitetstype = yrkesaktivitetstype,
-        organisasjonsnummer = organisasjonsnummer,
+        yrkesaktivitetstype = arbeidstakerVedtakMelding.yrkesaktivitetstype,
+        organisasjonsnummer = orgnr,
         arbeidsgiverNavn = arbeidsgiverNavn,
         vedtaksperiodeId = vedtaksperiodeId,
         fom = fom,
         tom = tom,
-        skjaeringstidspunkt = skjaeringstidspunkt,
+        skjaeringstidspunkt = arbeidstakerVedtakMelding.skjaeringstidspunkt,
         sykepengegrunnlag = sykepengegrunnlag,
-        utbetalingsdager = utbetalingsdager,
-        utbetaltTilArbeidsgiver = utbetalingsdager.summerBeloepTilArbeidsgiver(),
-        vedtakFattetTidspunkt = vedtakFattetTidspunkt,
-        vedtaksUtfallTilArbeidsgiver = vedtaksUtfallTilArbeidsgiver,
-        saksbehandlerIdent = saksbehandlerIdent,
-        saksbehandlerNavn = saksbehandlerNavn,
-        beslutterIdent = beslutterIdent,
-        beslutterNavn = beslutterNavn,
-        automatiskFattet = automatiskFattet,
-        harArbeidsgiverOensketRefusjon = harArbeidsgiverOensketRefusjon,
+        dager = dager,
+        utbetaltTilArbeidsgiver = dager.sumOf { it.beloepUtbetaltTilArbeidsgiver },
+        vedtakFattetTidspunkt = fattetTidspunkt,
+        vedtaksUtfallTilArbeidsgiver = arbeidstakerVedtakMelding.vedtaksUtfallTilArbeidsgiver,
+        saksbehandlerIdent = arbeidstakerVedtakMelding.saksbehandlerIdent,
+        saksbehandlerNavn = arbeidstakerVedtakMelding.saksbehandlerNavn,
+        beslutterIdent = arbeidstakerVedtakMelding.beslutterIdent,
+        beslutterNavn = arbeidstakerVedtakMelding.beslutterNavn,
+        automatiskFattet = arbeidstakerVedtakMelding.automatiskFattet,
+        harArbeidsgiverOensketRefusjon = arbeidstakerVedtakMelding.harArbeidsgiverOensketRefusjon,
     )
-
-private fun List<Utbetalingsdag>.summerBeloepTilArbeidsgiver(): Int = sumOf { it.beloepTilArbeidsgiver }
