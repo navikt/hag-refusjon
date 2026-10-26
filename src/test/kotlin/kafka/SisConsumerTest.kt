@@ -87,7 +87,7 @@ class SisConsumerTest :
                 )
             val json =
                 vedtakJson(vedtak.copy(utbetalingsdager = dager))
-                    .replace("\"UKJENT\"", "\"NOE_NYTT\"")
+                    .replace("\"${Avsender.UKJENT.name}\"", "\"NOE_NYTT\"")
 
             tolker
                 .lesMelding(json)
