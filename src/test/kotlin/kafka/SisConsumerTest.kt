@@ -81,17 +81,16 @@ class SisConsumerTest :
                 listOf(
                     utbetalingsdagMock(avsender = Avsender.ARBEIDSGIVER),
                     utbetalingsdagMock(avsender = Avsender.SAKSBEHANDLER),
-                    utbetalingsdagMock(avsender = Avsender.UKJENT),
                 )
             val json =
                 vedtakJson(vedtak.copy(utbetalingsdager = dager))
-                    .replace("\"${Avsender.UKJENT.name}\"", "\"NOE_NYTT\"")
+                    .replace("\"avsender\":\"SAKSBEHANDLER\"", "\"avsender\":\"NOE_NYTT\"")
 
             tolker
                 .lesMelding(json)
                 ?.utbetalingsdager
                 ?.map { it.forespurtRefusjon.avsender } shouldBe
-                listOf(Avsender.ARBEIDSGIVER, Avsender.SAKSBEHANDLER, Avsender.UKJENT)
+                listOf(Avsender.ARBEIDSGIVER, Avsender.UKJENT)
         }
 
         test("avviser vedtak uten behandlingId") {
