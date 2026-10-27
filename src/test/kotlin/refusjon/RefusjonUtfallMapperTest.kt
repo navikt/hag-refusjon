@@ -24,10 +24,7 @@ class RefusjonUtfallMapperTest :
         fun utbetalingsdag(
             dato: LocalDate,
             imReferanse: Uuid? = imId,
-        ): Utbetalingsdag =
-            utbetalingsdagMock(dato = dato).let {
-                it.copy(forespurtRefusjon = it.forespurtRefusjon.copy(hagInntektsmeldingReferanse = imReferanse))
-            }
+        ): Utbetalingsdag = utbetalingsdagMock(dato = dato, hagInntektsmeldingReferanse = imReferanse)
 
         fun map(
             utbetalingsdager: List<Utbetalingsdag>,
@@ -100,7 +97,8 @@ class RefusjonUtfallMapperTest :
         test("beholder desimaler i refusjonsbeløp per måned") {
             val refusjonskrav = listOf(InntektsmeldingRefusjonskrav(imId, Refusjon(beloepPerMaaned = 30000.5, endringer = emptyList())))
 
-            map(listOf(utbetalingsdag(LocalDate.of(2026, 7, 28))), refusjonskrav).dager.single().beloepKrevdRefusjonPerMaaned shouldBe 30000.5
+            map(listOf(utbetalingsdag(LocalDate.of(2026, 7, 28))), refusjonskrav).dager.single().beloepKrevdRefusjonPerMaaned shouldBe
+                30000.5
         }
 
         context("beloepPaaDato") {

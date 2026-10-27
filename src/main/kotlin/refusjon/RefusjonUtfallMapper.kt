@@ -59,10 +59,15 @@ internal fun Utbetalingsdagtype.tilDagType(): DagType =
         -> DagType.SYKEPENGER
 
         Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG -> DagType.ARBEIDSGIVERPERIODE
+
         Utbetalingsdagtype.NAV_HELG_DAG -> DagType.HELG
+
         Utbetalingsdagtype.FRIDAG -> DagType.FRI
+
         Utbetalingsdagtype.FERIEDAG -> DagType.FERIE
+
         Utbetalingsdagtype.PERMISJONSDAG -> DagType.PERMISJON
+
         Utbetalingsdagtype.ARBEIDSDAG -> DagType.ARBEIDSDAG
 
         Utbetalingsdagtype.AVVIST_DAG,

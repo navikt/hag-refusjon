@@ -26,7 +26,7 @@ data class RefusjonUtfallPdfData(
     val tom: LocalDate,
     @SerialName("skjæringstidspunkt") val skjaeringstidspunkt: LocalDate,
     val sykepengegrunnlag: Double,
-    val dager: List<Dag>,
+    val daggrupper: List<Daggruppe>,
     val utbetaltTilArbeidsgiver: Int,
     val vedtakFattetTidspunkt: LocalDateTime,
     val vedtaksUtfallTilArbeidsgiver: VedtaksUtfall,
@@ -37,6 +37,22 @@ data class RefusjonUtfallPdfData(
     val automatiskFattet: Boolean,
     @SerialName("harArbeidsgiverØnsketRefusjon") val harArbeidsgiverOensketRefusjon: Boolean,
 )
+
+@Serializable
+data class Daggruppe(
+    val antallDager: Int,
+    val sykepengeStatus: SykepengeStatus,
+    val sykdomsgrad: Int,
+    val beloepKrevdRefusjonPerDag: Int,
+    val beloepKrevdRefusjonPerMaaned: Double?,
+    val beloepUtbetaltTilArbeidsgiver: Int,
+)
+
+@Serializable
+enum class SykepengeStatus {
+    RETT_TIL_SYKEPENGER,
+    IKKE_RETT_TIL_SYKEPENGER,
+}
 
 fun RefusjonUtfall.tilRefusjonUtfallPdfData(): RefusjonUtfallPdfData =
     RefusjonUtfallPdfData(
@@ -50,7 +66,7 @@ fun RefusjonUtfall.tilRefusjonUtfallPdfData(): RefusjonUtfallPdfData =
         tom = tom,
         skjaeringstidspunkt = arbeidstakerVedtakMelding.skjaeringstidspunkt,
         sykepengegrunnlag = sykepengegrunnlag,
-        dager = dager,
+        daggrupper = tilDaggrupper(),
         utbetaltTilArbeidsgiver = dager.sumOf { it.beloepUtbetaltTilArbeidsgiver },
         vedtakFattetTidspunkt = fattetTidspunkt,
         vedtaksUtfallTilArbeidsgiver = arbeidstakerVedtakMelding.vedtaksUtfallTilArbeidsgiver,
@@ -60,4 +76,69 @@ fun RefusjonUtfall.tilRefusjonUtfallPdfData(): RefusjonUtfallPdfData =
         beslutterNavn = arbeidstakerVedtakMelding.beslutterNavn,
         automatiskFattet = arbeidstakerVedtakMelding.automatiskFattet,
         harArbeidsgiverOensketRefusjon = arbeidstakerVedtakMelding.harArbeidsgiverOensketRefusjon,
+    )
+
+// Påfølgende dager med lik status, sykdomsgrad og refusjonskrav slås sammen til én daggruppe.
+// Dager som er filtrert bort (f.eks. helg) bryter ikke en daggruppe.
+private fun RefusjonUtfall.tilDaggrupper(): List<Daggruppe> {
+    val beloepKrevdRefusjonPerMaanedPerDato = dager.associate { it.dato to it.beloepKrevdRefusjonPerMaaned }
+
+    return arbeidstakerVedtakMelding.utbetalingsdager
+        .sortedBy { it.dato }
+        .mapNotNull { it.tilDaggruppe(beloepKrevdRefusjonPerMaanedPerDato[it.dato]) }
+        .fold(emptyList()) { daggrupper, neste ->
+            val forrige = daggrupper.lastOrNull()
+            if (forrige != null && forrige.kanSlaasSammenMed(neste)) {
+                daggrupper.dropLast(1) + forrige.slaaSammenMed(neste)
+            } else {
+                daggrupper + neste
+            }
+        }
+}
+
+private fun Utbetalingsdag.tilDaggruppe(beloepKrevdRefusjonPerMaaned: Double?): Daggruppe? =
+    type.tilSykepengeStatus()?.let { sykepengeStatus ->
+        Daggruppe(
+            antallDager = 1,
+            sykepengeStatus = sykepengeStatus,
+            sykdomsgrad = sykdomsgrad,
+            beloepKrevdRefusjonPerDag = forespurtRefusjon.beloep,
+            beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
+            beloepUtbetaltTilArbeidsgiver = beloepTilArbeidsgiver,
+        )
+    }
+
+private fun Utbetalingsdagtype.tilSykepengeStatus(): SykepengeStatus? =
+    when (this) {
+        Utbetalingsdagtype.NAV_DAG,
+        Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV,
+        -> SykepengeStatus.RETT_TIL_SYKEPENGER
+
+        Utbetalingsdagtype.AVVIST_DAG,
+        Utbetalingsdagtype.FORELDET_DAG,
+        -> SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER
+
+        Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG,
+        Utbetalingsdagtype.NAV_HELG_DAG,
+        Utbetalingsdagtype.FRIDAG,
+        Utbetalingsdagtype.FERIEDAG,
+        Utbetalingsdagtype.PERMISJONSDAG,
+        Utbetalingsdagtype.ARBEIDSDAG,
+        Utbetalingsdagtype.VENTETIDSDAG,
+        Utbetalingsdagtype.ARBEID_IKKE_GJENOPPTATT_DAG,
+        Utbetalingsdagtype.ANDRE_YTELSER,
+        Utbetalingsdagtype.UKJENT_DAG,
+        -> null
+    }
+
+private fun Daggruppe.kanSlaasSammenMed(neste: Daggruppe): Boolean =
+    sykepengeStatus == neste.sykepengeStatus &&
+        sykdomsgrad == neste.sykdomsgrad &&
+        beloepKrevdRefusjonPerDag == neste.beloepKrevdRefusjonPerDag &&
+        beloepKrevdRefusjonPerMaaned == neste.beloepKrevdRefusjonPerMaaned
+
+private fun Daggruppe.slaaSammenMed(neste: Daggruppe): Daggruppe =
+    copy(
+        antallDager = antallDager + neste.antallDager,
+        beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver + neste.beloepUtbetaltTilArbeidsgiver,
     )

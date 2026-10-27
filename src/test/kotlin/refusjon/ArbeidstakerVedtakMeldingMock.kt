@@ -5,6 +5,7 @@ import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 
 fun arbeidstakerVedtakMeldingMock(
@@ -37,20 +38,24 @@ fun utbetalingsdagMock(
     dato: LocalDate = LocalDate.of(2026, 7, 28),
     type: Utbetalingsdagtype = Utbetalingsdagtype.NAV_DAG,
     avsender: Avsender = Avsender.ARBEIDSGIVER,
+    sykdomsgrad: Int = 100,
+    beloepTilArbeidsgiver: Int = 1000,
+    forespurtRefusjonBeloep: Int = 1000,
+    hagInntektsmeldingReferanse: Uuid? = UUID.randomUUID().toKotlinUuid(),
 ): Utbetalingsdag =
     Utbetalingsdag(
         dato = dato,
         type = type,
-        sykdomsgrad = 100,
+        sykdomsgrad = sykdomsgrad,
         dekningsgrad = 100,
         beloepTilBruker = 0,
-        beloepTilArbeidsgiver = 1000,
+        beloepTilArbeidsgiver = beloepTilArbeidsgiver,
         forespurtRefusjon =
             ForespurtRefusjon(
-                beloep = 1000,
+                beloep = forespurtRefusjonBeloep,
                 avsender = avsender,
                 sasInntektsmeldingReferanse = null,
-                hagInntektsmeldingReferanse = UUID.randomUUID().toKotlinUuid(),
+                hagInntektsmeldingReferanse = hagInntektsmeldingReferanse,
             ),
         begrunnelser = emptyList(),
     )
