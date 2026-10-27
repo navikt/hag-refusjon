@@ -9,6 +9,7 @@ import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateSerializer
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateTimeSerializer
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.uuid.Uuid
@@ -46,11 +47,13 @@ data class Daggruppe(
     val beloepKrevdRefusjonPerDag: Int,
     val beloepKrevdRefusjonPerMaaned: Double?,
     val beloepUtbetaltTilArbeidsgiver: Int,
+    val begrensetTil6G: Boolean,
 )
 
 @Serializable
 enum class SykepengeStatus {
     RETT_TIL_SYKEPENGER,
+    RETT_TIL_SYKEPENGER_REDUSERT,
     IKKE_RETT_TIL_SYKEPENGER,
 }
 
@@ -78,7 +81,7 @@ fun RefusjonUtfall.tilRefusjonUtfallPdfData(): RefusjonUtfallPdfData =
         harArbeidsgiverOensketRefusjon = arbeidstakerVedtakMelding.harArbeidsgiverOensketRefusjon,
     )
 
-// Påfølgende dager med lik status, sykdomsgrad og refusjonskrav slås sammen til én daggruppe.
+// Påfølgende dager med lik status, sykdomsgrad, refusjonskrav og 6G-begrensning slås sammen til én daggruppe.
 // Dager som er filtrert bort (f.eks. helg) bryter ikke en daggruppe.
 private fun RefusjonUtfall.tilDaggrupper(): List<Daggruppe> {
     val beloepKrevdRefusjonPerMaanedPerDato = dager.associate { it.dato to it.beloepKrevdRefusjonPerMaaned }
@@ -96,8 +99,10 @@ private fun RefusjonUtfall.tilDaggrupper(): List<Daggruppe> {
         }
 }
 
-private fun Utbetalingsdag.tilDaggruppe(beloepKrevdRefusjonPerMaaned: Double?): Daggruppe? =
-    type.tilSykepengeStatus()?.let { sykepengeStatus ->
+private fun Utbetalingsdag.tilDaggruppe(beloepKrevdRefusjonPerMaaned: Double?): Daggruppe? {
+    val refusjonskravPerAar = refusjonskravPerAar(beloepKrevdRefusjonPerMaaned)
+
+    return tilSykepengeStatus(refusjonskravPerAar)?.let { sykepengeStatus ->
         Daggruppe(
             antallDager = 1,
             sykepengeStatus = sykepengeStatus,
@@ -105,18 +110,33 @@ private fun Utbetalingsdag.tilDaggruppe(beloepKrevdRefusjonPerMaaned: Double?): 
             beloepKrevdRefusjonPerDag = forespurtRefusjon.beloep,
             beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
             beloepUtbetaltTilArbeidsgiver = beloepTilArbeidsgiver,
+            begrensetTil6G = sykepengeStatus != SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER && refusjonskravPerAar > ANVENDT_6G,
         )
     }
+}
 
-private fun Utbetalingsdagtype.tilSykepengeStatus(): SykepengeStatus? =
-    when (this) {
+// Refusjonskravet fra inntektsmeldingen er førstevalg. Mangler det, brukes kravet per dag fra sis.
+private fun Utbetalingsdag.refusjonskravPerAar(beloepKrevdRefusjonPerMaaned: Double?): BigDecimal =
+    beloepKrevdRefusjonPerMaaned?.toBigDecimal()?.multiply(BigDecimal("12"))
+        ?: forespurtRefusjon.beloep.toBigDecimal().multiply(BigDecimal("260"))
+
+private fun Utbetalingsdag.tilSykepengeStatus(refusjonskravPerAar: BigDecimal): SykepengeStatus? =
+    when (type) {
         Utbetalingsdagtype.NAV_DAG,
         Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV,
-        -> SykepengeStatus.RETT_TIL_SYKEPENGER
+        -> {
+            if (harRedusertRefusjon(refusjonskravPerAar)) {
+                SykepengeStatus.RETT_TIL_SYKEPENGER_REDUSERT
+            } else {
+                SykepengeStatus.RETT_TIL_SYKEPENGER
+            }
+        }
 
         Utbetalingsdagtype.AVVIST_DAG,
         Utbetalingsdagtype.FORELDET_DAG,
-        -> SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER
+        -> {
+            SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER
+        }
 
         Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG,
         Utbetalingsdagtype.NAV_HELG_DAG,
@@ -128,14 +148,23 @@ private fun Utbetalingsdagtype.tilSykepengeStatus(): SykepengeStatus? =
         Utbetalingsdagtype.ARBEID_IKKE_GJENOPPTATT_DAG,
         Utbetalingsdagtype.ANDRE_YTELSER,
         Utbetalingsdagtype.UKJENT_DAG,
-        -> null
+        -> {
+            null
+        }
     }
+
+private fun Utbetalingsdag.harRedusertRefusjon(refusjonskravPerAar: BigDecimal): Boolean =
+    erRedusertRefusjon(
+        forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar, ANVENDT_6G, sykdomsgrad),
+        faktiskRefusjon = beloepTilArbeidsgiver.toBigDecimal(),
+    )
 
 private fun Daggruppe.kanSlaasSammenMed(neste: Daggruppe): Boolean =
     sykepengeStatus == neste.sykepengeStatus &&
         sykdomsgrad == neste.sykdomsgrad &&
         beloepKrevdRefusjonPerDag == neste.beloepKrevdRefusjonPerDag &&
-        beloepKrevdRefusjonPerMaaned == neste.beloepKrevdRefusjonPerMaaned
+        beloepKrevdRefusjonPerMaaned == neste.beloepKrevdRefusjonPerMaaned &&
+        begrensetTil6G == neste.begrensetTil6G
 
 private fun Daggruppe.slaaSammenMed(neste: Daggruppe): Daggruppe =
     copy(

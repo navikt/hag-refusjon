@@ -17,7 +17,14 @@ import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 
 private val IM_ID = UUID.randomUUID().toKotlinUuid()
-private val REFUSJONSKRAV = Refusjon(beloepPerMaaned = 30000.0, endringer = emptyList())
+
+// 26 000 kr per måned × 12 / 260 virkedager = 1 200 kr per dag
+private val REFUSJONSKRAV = Refusjon(beloepPerMaaned = 26000.0, endringer = emptyList())
+private const val DAGSATS = 1200
+
+// 80 000 kr × 12 = 960 000 kr er over 6G. Refusjonen begrenses til 819 294 / 260 ≈ 3 151,13 kr per dag.
+private val REFUSJONSKRAV_OVER_6G = Refusjon(beloepPerMaaned = 80000.0, endringer = emptyList())
+private const val DAGSATS_6G = 3151
 
 class RefusjonUtfallPdfDataTest :
     FunSpec({
@@ -52,7 +59,7 @@ class RefusjonUtfallPdfDataTest :
                     dag(august(3), Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV),
                     dag(august(4), Utbetalingsdagtype.NAV_DAG),
                     dag(august(5), Utbetalingsdagtype.NAV_DAG),
-                ) shouldBe listOf(daggruppe(antallDager = 3, beloepUtbetaltTilArbeidsgiver = 3000))
+                ) shouldBe listOf(daggruppe(antallDager = 3, beloepUtbetaltTilArbeidsgiver = 3 * DAGSATS))
             }
 
             test("helg bryter ikke en daggruppe og telles ikke med i antall dager") {
@@ -66,7 +73,7 @@ class RefusjonUtfallPdfDataTest :
                     }
 
                 daggrupper(*toUkerMedHelg.toTypedArray()) shouldBe
-                    listOf(daggruppe(antallDager = 10, beloepUtbetaltTilArbeidsgiver = 10000))
+                    listOf(daggruppe(antallDager = 10, beloepUtbetaltTilArbeidsgiver = 10 * DAGSATS))
             }
 
             test("sorterer utbetalingsdagene før de slås sammen") {
@@ -76,17 +83,17 @@ class RefusjonUtfallPdfDataTest :
                     dag(august(5)),
                 ) shouldBe
                     listOf(
-                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = 1000),
-                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = 1000, sykdomsgrad = 50),
-                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = 1000),
+                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = DAGSATS),
+                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = DAGSATS / 2, sykdomsgrad = 50),
+                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = DAGSATS),
                     )
             }
 
-            test("summerer beløp utbetalt til arbeidsgiver uten at det påvirker sammenslåingen") {
+            test("summerer beløp utbetalt til arbeidsgiver i daggruppen") {
                 daggrupper(
-                    dag(august(3), beloepTilArbeidsgiver = 1000),
-                    dag(august(4), beloepTilArbeidsgiver = 900),
-                ) shouldBe listOf(daggruppe(antallDager = 2, beloepUtbetaltTilArbeidsgiver = 1900))
+                    dag(august(3), beloepTilArbeidsgiver = DAGSATS),
+                    dag(august(4), beloepTilArbeidsgiver = DAGSATS - 1),
+                ) shouldBe listOf(daggruppe(antallDager = 2, beloepUtbetaltTilArbeidsgiver = 2 * DAGSATS - 1))
             }
 
             context("starter ny daggruppe når") {
@@ -94,7 +101,8 @@ class RefusjonUtfallPdfDataTest :
                     nameFn = { it.first },
                     "status endres" to dag(august(4), Utbetalingsdagtype.AVVIST_DAG),
                     "sykdomsgrad endres" to dag(august(4), sykdomsgrad = 50),
-                    "refusjonskrav per dag endres" to dag(august(4), forespurtRefusjonBeloep = 500),
+                    "refusjonskrav per dag endres" to dag(august(4), forespurtRefusjonBeloep = DAGSATS / 2),
+                    "utbetalingen blir redusert" to dag(august(4), beloepTilArbeidsgiver = DAGSATS / 2),
                 ) { (_, endretDag) ->
                     daggrupper(dag(august(3)), endretDag) shouldHaveSize 2
                 }
@@ -102,12 +110,16 @@ class RefusjonUtfallPdfDataTest :
 
             test("starter ny daggruppe når refusjonskrav per måned endres") {
                 val refusjonskravMedEndring =
-                    REFUSJONSKRAV.copy(endringer = listOf(RefusjonEndring(beloep = 15000.0, startdato = august(4))))
+                    REFUSJONSKRAV.copy(endringer = listOf(RefusjonEndring(beloep = 13000.0, startdato = august(4))))
 
-                daggrupper(dag(august(3)), dag(august(4)), refusjonskrav = refusjonskravMedEndring) shouldBe
+                daggrupper(
+                    dag(august(3)),
+                    dag(august(4), beloepTilArbeidsgiver = DAGSATS / 2),
+                    refusjonskrav = refusjonskravMedEndring,
+                ) shouldBe
                     listOf(
-                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = 1000),
-                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = 1000, beloepKrevdRefusjonPerMaaned = 15000.0),
+                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = DAGSATS),
+                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = DAGSATS / 2, beloepKrevdRefusjonPerMaaned = 13000.0),
                     )
             }
 
@@ -142,6 +154,82 @@ class RefusjonUtfallPdfDataTest :
                     .beloepKrevdRefusjonPerMaaned shouldBe null
             }
         }
+
+        context("sykepengestatus") {
+            withData(
+                nameFn = { (utbetalt, status) -> "utbetalt $utbetalt kr mot forventet $DAGSATS kr gir $status" },
+                DAGSATS to SykepengeStatus.RETT_TIL_SYKEPENGER,
+                DAGSATS - 1 to SykepengeStatus.RETT_TIL_SYKEPENGER,
+                DAGSATS + 2 to SykepengeStatus.RETT_TIL_SYKEPENGER,
+                DAGSATS - 2 to SykepengeStatus.RETT_TIL_SYKEPENGER_REDUSERT,
+            ) { (utbetalt, forventetStatus) ->
+                daggrupper(dag(august(3), beloepTilArbeidsgiver = utbetalt)).single().sykepengeStatus shouldBe forventetStatus
+            }
+
+            test("tar høyde for sykdomsgrad i forventet refusjon") {
+                daggrupper(
+                    dag(august(3), sykdomsgrad = 50, beloepTilArbeidsgiver = DAGSATS / 2),
+                    dag(august(4), sykdomsgrad = 50, beloepTilArbeidsgiver = DAGSATS / 2 - 2),
+                ).map { it.sykepengeStatus } shouldBe
+                    listOf(SykepengeStatus.RETT_TIL_SYKEPENGER, SykepengeStatus.RETT_TIL_SYKEPENGER_REDUSERT)
+            }
+
+            test("bruker refusjonskrav per dag fra sis når refusjonskrav per måned mangler") {
+                refusjonUtfall(
+                    dag(august(3), forespurtRefusjonBeloep = 1000, beloepTilArbeidsgiver = 1000),
+                    dag(august(4), forespurtRefusjonBeloep = 1000, beloepTilArbeidsgiver = 900),
+                ).copy(dager = emptyList())
+                    .tilRefusjonUtfallPdfData()
+                    .daggrupper
+                    .map { it.sykepengeStatus } shouldBe
+                    listOf(SykepengeStatus.RETT_TIL_SYKEPENGER, SykepengeStatus.RETT_TIL_SYKEPENGER_REDUSERT)
+            }
+
+            test("dager uten rett til sykepenger vurderes ikke for redusert refusjon eller 6G") {
+                daggrupper(
+                    dag(august(3), Utbetalingsdagtype.AVVIST_DAG, beloepTilArbeidsgiver = 0),
+                    refusjonskrav = REFUSJONSKRAV_OVER_6G,
+                ).single() shouldBe
+                    daggruppe(
+                        antallDager = 1,
+                        beloepUtbetaltTilArbeidsgiver = 0,
+                        status = SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER,
+                        beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G.beloepPerMaaned,
+                        begrensetTil6G = false,
+                    )
+            }
+        }
+
+        context("begrensetTil6G") {
+            test("refusjonskrav over 6G er begrenset, og utbetalt 6G-dagsats gir ikke redusert") {
+                daggrupper(dag(august(3), beloepTilArbeidsgiver = DAGSATS_6G), refusjonskrav = REFUSJONSKRAV_OVER_6G).single() shouldBe
+                    daggruppe(
+                        antallDager = 1,
+                        beloepUtbetaltTilArbeidsgiver = DAGSATS_6G,
+                        beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G.beloepPerMaaned,
+                        begrensetTil6G = true,
+                    )
+            }
+
+            test("refusjonskrav over 6G gir redusert når utbetalingen er lavere enn 6G-dagsatsen") {
+                daggrupper(dag(august(3), beloepTilArbeidsgiver = DAGSATS_6G - 2), refusjonskrav = REFUSJONSKRAV_OVER_6G)
+                    .single()
+                    .sykepengeStatus shouldBe SykepengeStatus.RETT_TIL_SYKEPENGER_REDUSERT
+            }
+
+            test("refusjonskrav på nøyaktig 6G er ikke begrenset") {
+                // 68 274,50 kr × 12 = 819 294 kr
+                val refusjonskravLik6G = Refusjon(beloepPerMaaned = 68274.5, endringer = emptyList())
+
+                daggrupper(dag(august(3), beloepTilArbeidsgiver = DAGSATS_6G), refusjonskrav = refusjonskravLik6G)
+                    .single()
+                    .begrensetTil6G shouldBe false
+            }
+
+            test("refusjonskrav under 6G er ikke begrenset") {
+                daggrupper(dag(august(3))).single().begrensetTil6G shouldBe false
+            }
+        }
     })
 
 private fun august(dag: Int): LocalDate = LocalDate.of(2026, 8, dag)
@@ -150,8 +238,8 @@ private fun dag(
     dato: LocalDate,
     type: Utbetalingsdagtype = Utbetalingsdagtype.NAV_DAG,
     sykdomsgrad: Int = 100,
-    beloepTilArbeidsgiver: Int = 1000,
-    forespurtRefusjonBeloep: Int = 1000,
+    beloepTilArbeidsgiver: Int = DAGSATS * sykdomsgrad / 100,
+    forespurtRefusjonBeloep: Int = DAGSATS,
 ): Utbetalingsdag =
     utbetalingsdagMock(
         dato = dato,
@@ -167,8 +255,9 @@ private fun daggruppe(
     beloepUtbetaltTilArbeidsgiver: Int,
     status: SykepengeStatus = SykepengeStatus.RETT_TIL_SYKEPENGER,
     sykdomsgrad: Int = 100,
-    beloepKrevdRefusjonPerDag: Int = 1000,
+    beloepKrevdRefusjonPerDag: Int = DAGSATS,
     beloepKrevdRefusjonPerMaaned: Double? = REFUSJONSKRAV.beloepPerMaaned,
+    begrensetTil6G: Boolean = false,
 ): Daggruppe =
     Daggruppe(
         antallDager = antallDager,
@@ -177,6 +266,7 @@ private fun daggruppe(
         beloepKrevdRefusjonPerDag = beloepKrevdRefusjonPerDag,
         beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
         beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
+        begrensetTil6G = begrensetTil6G,
     )
 
 private fun refusjonUtfall(
