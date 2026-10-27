@@ -53,7 +53,7 @@ data class Daggruppe(
 @Serializable
 enum class SykepengeStatus {
     RETT_TIL_SYKEPENGER,
-    RETT_TIL_SYKEPENGER_REDUSERT,
+    RETT_TIL_SYKEPENGER_DIFFERANSE,
     IKKE_RETT_TIL_SYKEPENGER,
 }
 
@@ -125,8 +125,8 @@ private fun Utbetalingsdag.tilSykepengeStatus(refusjonskravPerAar: BigDecimal): 
         Utbetalingsdagtype.NAV_DAG,
         Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV,
         -> {
-            if (harRedusertRefusjon(refusjonskravPerAar)) {
-                SykepengeStatus.RETT_TIL_SYKEPENGER_REDUSERT
+            if (harDifferanseIRefusjon(refusjonskravPerAar)) {
+                SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE
             } else {
                 SykepengeStatus.RETT_TIL_SYKEPENGER
             }
@@ -153,8 +153,8 @@ private fun Utbetalingsdag.tilSykepengeStatus(refusjonskravPerAar: BigDecimal): 
         }
     }
 
-private fun Utbetalingsdag.harRedusertRefusjon(refusjonskravPerAar: BigDecimal): Boolean =
-    erRedusertRefusjon(
+private fun Utbetalingsdag.harDifferanseIRefusjon(refusjonskravPerAar: BigDecimal): Boolean =
+    erDifferanseIRefusjon(
         forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar, ANVENDT_6G, sykdomsgrad),
         faktiskRefusjon = beloepTilArbeidsgiver.toBigDecimal(),
     )

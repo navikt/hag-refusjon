@@ -42,15 +42,17 @@ class RefusjonsberegningTest :
             }
         }
 
-        context("erRedusertRefusjon") {
+        context("erDifferanseIRefusjon") {
             withData(
                 nameFn = { (faktisk, forventetResultat) -> "faktisk $faktisk mot forventet 1200 gir $forventetResultat" },
                 "1200" to false,
                 "1199" to false,
+                "1201" to false,
                 "1198.99" to true,
-                "1300" to false,
+                "1201.01" to true,
             ) { (faktisk, forventetResultat) ->
-                erRedusertRefusjon(forventetRefusjon = BigDecimal("1200"), faktiskRefusjon = BigDecimal(faktisk)) shouldBe forventetResultat
+                erDifferanseIRefusjon(forventetRefusjon = BigDecimal("1200"), faktiskRefusjon = BigDecimal(faktisk)) shouldBe
+                    forventetResultat
             }
         }
     })

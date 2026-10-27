@@ -21,8 +21,8 @@ internal fun forventetRefusjonPerDag(
         .divide(BigDecimal("26000"), MathContext.DECIMAL128) // 260 virkedager per år × 100 %
 }
 
-// Avvik på inntil 1 kr skyldes avrunding i Spleis. Høyere utbetaling enn forventet regnes ikke som redusert.
-internal fun erRedusertRefusjon(
+// Avvik på inntil 1 kr i begge retninger skyldes avrunding i Spleis.
+internal fun erDifferanseIRefusjon(
     forventetRefusjon: BigDecimal,
     faktiskRefusjon: BigDecimal,
-): Boolean = forventetRefusjon - faktiskRefusjon > BigDecimal.ONE
+): Boolean = (faktiskRefusjon - forventetRefusjon).abs() > BigDecimal.ONE

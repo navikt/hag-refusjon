@@ -102,7 +102,7 @@ class RefusjonUtfallPdfDataTest :
                     "status endres" to dag(august(4), Utbetalingsdagtype.AVVIST_DAG),
                     "sykdomsgrad endres" to dag(august(4), sykdomsgrad = 50),
                     "refusjonskrav per dag endres" to dag(august(4), forespurtRefusjonBeloep = DAGSATS / 2),
-                    "utbetalingen blir redusert" to dag(august(4), beloepTilArbeidsgiver = DAGSATS / 2),
+                    "utbetalingen avviker fra forventet" to dag(august(4), beloepTilArbeidsgiver = DAGSATS / 2),
                 ) { (_, endretDag) ->
                     daggrupper(dag(august(3)), endretDag) shouldHaveSize 2
                 }
@@ -160,8 +160,9 @@ class RefusjonUtfallPdfDataTest :
                 nameFn = { (utbetalt, status) -> "utbetalt $utbetalt kr mot forventet $DAGSATS kr gir $status" },
                 DAGSATS to SykepengeStatus.RETT_TIL_SYKEPENGER,
                 DAGSATS - 1 to SykepengeStatus.RETT_TIL_SYKEPENGER,
-                DAGSATS + 2 to SykepengeStatus.RETT_TIL_SYKEPENGER,
-                DAGSATS - 2 to SykepengeStatus.RETT_TIL_SYKEPENGER_REDUSERT,
+                DAGSATS + 1 to SykepengeStatus.RETT_TIL_SYKEPENGER,
+                DAGSATS - 2 to SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE,
+                DAGSATS + 2 to SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE,
             ) { (utbetalt, forventetStatus) ->
                 daggrupper(dag(august(3), beloepTilArbeidsgiver = utbetalt)).single().sykepengeStatus shouldBe forventetStatus
             }
@@ -171,7 +172,7 @@ class RefusjonUtfallPdfDataTest :
                     dag(august(3), sykdomsgrad = 50, beloepTilArbeidsgiver = DAGSATS / 2),
                     dag(august(4), sykdomsgrad = 50, beloepTilArbeidsgiver = DAGSATS / 2 - 2),
                 ).map { it.sykepengeStatus } shouldBe
-                    listOf(SykepengeStatus.RETT_TIL_SYKEPENGER, SykepengeStatus.RETT_TIL_SYKEPENGER_REDUSERT)
+                    listOf(SykepengeStatus.RETT_TIL_SYKEPENGER, SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE)
             }
 
             test("bruker refusjonskrav per dag fra sis når refusjonskrav per måned mangler") {
@@ -182,10 +183,10 @@ class RefusjonUtfallPdfDataTest :
                     .tilRefusjonUtfallPdfData()
                     .daggrupper
                     .map { it.sykepengeStatus } shouldBe
-                    listOf(SykepengeStatus.RETT_TIL_SYKEPENGER, SykepengeStatus.RETT_TIL_SYKEPENGER_REDUSERT)
+                    listOf(SykepengeStatus.RETT_TIL_SYKEPENGER, SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE)
             }
 
-            test("dager uten rett til sykepenger vurderes ikke for redusert refusjon eller 6G") {
+            test("dager uten rett til sykepenger vurderes ikke for differanse i refusjon eller 6G") {
                 daggrupper(
                     dag(august(3), Utbetalingsdagtype.AVVIST_DAG, beloepTilArbeidsgiver = 0),
                     refusjonskrav = REFUSJONSKRAV_OVER_6G,
@@ -201,7 +202,7 @@ class RefusjonUtfallPdfDataTest :
         }
 
         context("begrensetTil6G") {
-            test("refusjonskrav over 6G er begrenset, og utbetalt 6G-dagsats gir ikke redusert") {
+            test("refusjonskrav over 6G er begrenset, og utbetalt 6G-dagsats gir ikke differanse") {
                 daggrupper(dag(august(3), beloepTilArbeidsgiver = DAGSATS_6G), refusjonskrav = REFUSJONSKRAV_OVER_6G).single() shouldBe
                     daggruppe(
                         antallDager = 1,
@@ -211,10 +212,10 @@ class RefusjonUtfallPdfDataTest :
                     )
             }
 
-            test("refusjonskrav over 6G gir redusert når utbetalingen er lavere enn 6G-dagsatsen") {
+            test("refusjonskrav over 6G gir differanse når utbetalingen avviker fra 6G-dagsatsen") {
                 daggrupper(dag(august(3), beloepTilArbeidsgiver = DAGSATS_6G - 2), refusjonskrav = REFUSJONSKRAV_OVER_6G)
                     .single()
-                    .sykepengeStatus shouldBe SykepengeStatus.RETT_TIL_SYKEPENGER_REDUSERT
+                    .sykepengeStatus shouldBe SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE
             }
 
             test("refusjonskrav på nøyaktig 6G er ikke begrenset") {
