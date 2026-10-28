@@ -6,15 +6,15 @@ import java.time.LocalDate
 // Internt mellomsteg mellom utbetalingsdagene fra sis og daggruppene i RefusjonUtfall.
 internal data class Dag(
     val dato: LocalDate,
-    val dagtype: DagType,
+    val dagtype: Dagtype,
     val sykdomsgrad: Int,
     val beloepUtbetaltTilArbeidsgiver: Int,
     val beloepKrevdRefusjonPerDag: Int,
     val beloepKrevdRefusjonPerMaaned: Double?,
 )
 
-internal enum class DagType {
-    SYKEPENGER,
+internal enum class Dagtype {
+    NAV_DAG,
     ARBEIDSGIVERPERIODE,
     HELG,
     FRI,
@@ -62,7 +62,7 @@ private fun Dag.tilSykepengeStatus(
     anvendt6G: BigDecimal,
 ): SykepengeStatus? =
     when (dagtype) {
-        DagType.SYKEPENGER -> {
+        Dagtype.NAV_DAG -> {
             if (harDifferanseIRefusjon(refusjonskravPerAar, anvendt6G)) {
                 SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE
             } else {
@@ -70,17 +70,17 @@ private fun Dag.tilSykepengeStatus(
             }
         }
 
-        DagType.IKKE_RETT_PAA_SYKEPENGER -> {
+        Dagtype.IKKE_RETT_PAA_SYKEPENGER -> {
             SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER
         }
 
-        DagType.ARBEIDSGIVERPERIODE,
-        DagType.HELG,
-        DagType.FRI,
-        DagType.FERIE,
-        DagType.PERMISJON,
-        DagType.ARBEIDSDAG,
-        DagType.UKJENT,
+        Dagtype.ARBEIDSGIVERPERIODE,
+        Dagtype.HELG,
+        Dagtype.FRI,
+        Dagtype.FERIE,
+        Dagtype.PERMISJON,
+        Dagtype.ARBEIDSDAG,
+        Dagtype.UKJENT,
         -> {
             null
         }

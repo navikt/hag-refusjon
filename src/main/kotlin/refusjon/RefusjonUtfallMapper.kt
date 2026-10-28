@@ -49,7 +49,7 @@ internal fun ArbeidstakerVedtakMelding.tilDager(refusjonskrav: List<Inntektsmeld
 private fun Utbetalingsdag.tilDag(refusjonskravPerInntektsmelding: Map<Uuid, Refusjon?>): Dag =
     Dag(
         dato = dato,
-        dagtype = type.tilDagType(),
+        dagtype = tilDagType(),
         sykdomsgrad = sykdomsgrad,
         beloepUtbetaltTilArbeidsgiver = beloepTilArbeidsgiver,
         beloepKrevdRefusjonPerDag = forespurtRefusjon.beloep,
@@ -59,33 +59,34 @@ private fun Utbetalingsdag.tilDag(refusjonskravPerInntektsmelding: Map<Uuid, Ref
                 ?.beloepPaaDato(dato),
     )
 
-internal fun Utbetalingsdagtype.tilDagType(): DagType =
-    when (this) {
-        Utbetalingsdagtype.NAV_DAG,
+internal fun Utbetalingsdag.tilDagType(): Dagtype =
+    when (type) {
+        Utbetalingsdagtype.NAV_DAG -> Dagtype.NAV_DAG
+
+        // Vedtaksløsningen slår sammen de to arbeidsgiverperiodetypene, så utbetalingen avgjør om Nav dekker dagen.
+        Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG,
         Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV,
-        -> DagType.SYKEPENGER
+        -> if (beloepTilArbeidsgiver > 0) Dagtype.NAV_DAG else Dagtype.ARBEIDSGIVERPERIODE
 
-        Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG -> DagType.ARBEIDSGIVERPERIODE
+        Utbetalingsdagtype.NAV_HELG_DAG -> Dagtype.HELG
 
-        Utbetalingsdagtype.NAV_HELG_DAG -> DagType.HELG
+        Utbetalingsdagtype.FRIDAG -> Dagtype.FRI
 
-        Utbetalingsdagtype.FRIDAG -> DagType.FRI
+        Utbetalingsdagtype.FERIEDAG -> Dagtype.FERIE
 
-        Utbetalingsdagtype.FERIEDAG -> DagType.FERIE
+        Utbetalingsdagtype.PERMISJONSDAG -> Dagtype.PERMISJON
 
-        Utbetalingsdagtype.PERMISJONSDAG -> DagType.PERMISJON
-
-        Utbetalingsdagtype.ARBEIDSDAG -> DagType.ARBEIDSDAG
+        Utbetalingsdagtype.ARBEIDSDAG -> Dagtype.ARBEIDSDAG
 
         Utbetalingsdagtype.AVVIST_DAG,
         Utbetalingsdagtype.FORELDET_DAG,
-        -> DagType.IKKE_RETT_PAA_SYKEPENGER
+        -> Dagtype.IKKE_RETT_PAA_SYKEPENGER
 
         Utbetalingsdagtype.VENTETIDSDAG,
         Utbetalingsdagtype.ARBEID_IKKE_GJENOPPTATT_DAG,
         Utbetalingsdagtype.ANDRE_YTELSER,
         Utbetalingsdagtype.UKJENT_DAG,
-        -> DagType.UKJENT
+        -> Dagtype.UKJENT
     }
 
 // Endringer i refusjonskravet gjelder fra og med startdato og erstatter beløpPerMåned.

@@ -27,15 +27,15 @@ class DaggruppeMapperTest :
 
             context("tar bare med dager med eller uten rett til sykepenger") {
                 withData(
-                    DagType.SYKEPENGER to SykepengeStatus.RETT_TIL_SYKEPENGER,
-                    DagType.IKKE_RETT_PAA_SYKEPENGER to SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER,
-                    DagType.ARBEIDSGIVERPERIODE to null,
-                    DagType.HELG to null,
-                    DagType.FRI to null,
-                    DagType.FERIE to null,
-                    DagType.PERMISJON to null,
-                    DagType.ARBEIDSDAG to null,
-                    DagType.UKJENT to null,
+                    Dagtype.NAV_DAG to SykepengeStatus.RETT_TIL_SYKEPENGER,
+                    Dagtype.IKKE_RETT_PAA_SYKEPENGER to SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER,
+                    Dagtype.ARBEIDSGIVERPERIODE to null,
+                    Dagtype.HELG to null,
+                    Dagtype.FRI to null,
+                    Dagtype.FERIE to null,
+                    Dagtype.PERMISJON to null,
+                    Dagtype.ARBEIDSDAG to null,
+                    Dagtype.UKJENT to null,
                 ) { (dagtype, forventetStatus) ->
                     daggrupper(dag(august(3), dagtype)).map { it.sykepengeStatus } shouldBe listOfNotNull(forventetStatus)
                 }
@@ -53,7 +53,7 @@ class DaggruppeMapperTest :
                 val toUkerMedHelg =
                     (3..14).map { august(it) }.map { dato ->
                         if (dato.dayOfWeek in listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)) {
-                            dag(dato, DagType.HELG, beloepUtbetaltTilArbeidsgiver = 0)
+                            dag(dato, Dagtype.HELG, beloepUtbetaltTilArbeidsgiver = 0)
                         } else {
                             dag(dato)
                         }
@@ -87,15 +87,15 @@ class DaggruppeMapperTest :
                 daggrupper(
                     dag(august(3), sykdomsgrad = 50),
                     dag(august(4), sykdomsgrad = 50),
-                    dag(august(5), DagType.IKKE_RETT_PAA_SYKEPENGER, beloepUtbetaltTilArbeidsgiver = 0),
-                    dag(august(6), DagType.IKKE_RETT_PAA_SYKEPENGER, beloepUtbetaltTilArbeidsgiver = 0),
+                    dag(august(5), Dagtype.IKKE_RETT_PAA_SYKEPENGER, beloepUtbetaltTilArbeidsgiver = 0),
+                    dag(august(6), Dagtype.IKKE_RETT_PAA_SYKEPENGER, beloepUtbetaltTilArbeidsgiver = 0),
                 ).map { it.beloepKrevdRefusjon } shouldBe listOf(2 * DAGSATS, 2 * DAGSATS)
             }
 
             context("starter ny daggruppe når") {
                 withData(
                     nameFn = { it.first },
-                    "status endres" to dag(august(4), DagType.IKKE_RETT_PAA_SYKEPENGER),
+                    "status endres" to dag(august(4), Dagtype.IKKE_RETT_PAA_SYKEPENGER),
                     "sykdomsgrad endres" to dag(august(4), sykdomsgrad = 50),
                     "refusjonskrav per dag endres" to dag(august(4), beloepKrevdRefusjonPerDag = DAGSATS / 2),
                     "refusjonskrav per måned endres" to
@@ -112,9 +112,9 @@ class DaggruppeMapperTest :
 
             test("grupperer dager uten rett til sykepenger etter samme regler") {
                 daggrupper(
-                    dag(august(3), DagType.IKKE_RETT_PAA_SYKEPENGER, sykdomsgrad = 10, beloepUtbetaltTilArbeidsgiver = 0),
-                    dag(august(4), DagType.IKKE_RETT_PAA_SYKEPENGER, sykdomsgrad = 10, beloepUtbetaltTilArbeidsgiver = 0),
-                    dag(august(5), DagType.IKKE_RETT_PAA_SYKEPENGER, sykdomsgrad = 15, beloepUtbetaltTilArbeidsgiver = 0),
+                    dag(august(3), Dagtype.IKKE_RETT_PAA_SYKEPENGER, sykdomsgrad = 10, beloepUtbetaltTilArbeidsgiver = 0),
+                    dag(august(4), Dagtype.IKKE_RETT_PAA_SYKEPENGER, sykdomsgrad = 10, beloepUtbetaltTilArbeidsgiver = 0),
+                    dag(august(5), Dagtype.IKKE_RETT_PAA_SYKEPENGER, sykdomsgrad = 15, beloepUtbetaltTilArbeidsgiver = 0),
                 ) shouldBe
                     listOf(
                         daggruppe(
@@ -175,7 +175,7 @@ class DaggruppeMapperTest :
                 daggrupper(
                     dag(
                         august(3),
-                        DagType.IKKE_RETT_PAA_SYKEPENGER,
+                        Dagtype.IKKE_RETT_PAA_SYKEPENGER,
                         beloepUtbetaltTilArbeidsgiver = 0,
                         beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED,
                     ),
@@ -229,7 +229,7 @@ private fun august(dag: Int): LocalDate = LocalDate.of(2026, 8, dag)
 
 private fun dag(
     dato: LocalDate,
-    dagtype: DagType = DagType.SYKEPENGER,
+    dagtype: Dagtype = Dagtype.NAV_DAG,
     sykdomsgrad: Int = 100,
     beloepUtbetaltTilArbeidsgiver: Int = DAGSATS * sykdomsgrad / 100,
     beloepKrevdRefusjonPerDag: Int = DAGSATS,

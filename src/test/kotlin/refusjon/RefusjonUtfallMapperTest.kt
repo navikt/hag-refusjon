@@ -130,7 +130,7 @@ class RefusjonUtfallMapperTest :
                 listOf(
                     Dag(
                         dato = dato,
-                        dagtype = DagType.SYKEPENGER,
+                        dagtype = Dagtype.NAV_DAG,
                         sykdomsgrad = 100,
                         beloepUtbetaltTilArbeidsgiver = 1000,
                         beloepKrevdRefusjonPerDag = 1000,
@@ -234,22 +234,32 @@ class RefusjonUtfallMapperTest :
 
         context("mapper utbetalingsdagtype til dagtype") {
             withData(
-                Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG to DagType.ARBEIDSGIVERPERIODE,
-                Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV to DagType.SYKEPENGER,
-                Utbetalingsdagtype.NAV_DAG to DagType.SYKEPENGER,
-                Utbetalingsdagtype.NAV_HELG_DAG to DagType.HELG,
-                Utbetalingsdagtype.FRIDAG to DagType.FRI,
-                Utbetalingsdagtype.FERIEDAG to DagType.FERIE,
-                Utbetalingsdagtype.PERMISJONSDAG to DagType.PERMISJON,
-                Utbetalingsdagtype.ARBEIDSDAG to DagType.ARBEIDSDAG,
-                Utbetalingsdagtype.AVVIST_DAG to DagType.IKKE_RETT_PAA_SYKEPENGER,
-                Utbetalingsdagtype.FORELDET_DAG to DagType.IKKE_RETT_PAA_SYKEPENGER,
-                Utbetalingsdagtype.VENTETIDSDAG to DagType.UKJENT,
-                Utbetalingsdagtype.ARBEID_IKKE_GJENOPPTATT_DAG to DagType.UKJENT,
-                Utbetalingsdagtype.ANDRE_YTELSER to DagType.UKJENT,
-                Utbetalingsdagtype.UKJENT_DAG to DagType.UKJENT,
+                Utbetalingsdagtype.NAV_DAG to Dagtype.NAV_DAG,
+                Utbetalingsdagtype.NAV_HELG_DAG to Dagtype.HELG,
+                Utbetalingsdagtype.FRIDAG to Dagtype.FRI,
+                Utbetalingsdagtype.FERIEDAG to Dagtype.FERIE,
+                Utbetalingsdagtype.PERMISJONSDAG to Dagtype.PERMISJON,
+                Utbetalingsdagtype.ARBEIDSDAG to Dagtype.ARBEIDSDAG,
+                Utbetalingsdagtype.AVVIST_DAG to Dagtype.IKKE_RETT_PAA_SYKEPENGER,
+                Utbetalingsdagtype.FORELDET_DAG to Dagtype.IKKE_RETT_PAA_SYKEPENGER,
+                Utbetalingsdagtype.VENTETIDSDAG to Dagtype.UKJENT,
+                Utbetalingsdagtype.ARBEID_IKKE_GJENOPPTATT_DAG to Dagtype.UKJENT,
+                Utbetalingsdagtype.ANDRE_YTELSER to Dagtype.UKJENT,
+                Utbetalingsdagtype.UKJENT_DAG to Dagtype.UKJENT,
             ) { (utbetalingsdagtype, forventet) ->
-                utbetalingsdagtype.tilDagType() shouldBe forventet
+                utbetalingsdagMock(type = utbetalingsdagtype).tilDagType() shouldBe forventet
+            }
+        }
+
+        context("arbeidsgiverperiodedager er Nav-dager bare når Nav utbetaler til arbeidsgiver") {
+            withData(
+                nameFn = { (type, beloep, forventet) -> "$type med $beloep kr til arbeidsgiver gir $forventet" },
+                Triple(Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG, 1000, Dagtype.NAV_DAG),
+                Triple(Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG, 0, Dagtype.ARBEIDSGIVERPERIODE),
+                Triple(Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV, 1000, Dagtype.NAV_DAG),
+                Triple(Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV, 0, Dagtype.ARBEIDSGIVERPERIODE),
+            ) { (type, beloep, forventet) ->
+                utbetalingsdagMock(type = type, beloepTilArbeidsgiver = beloep).tilDagType() shouldBe forventet
             }
         }
     })
