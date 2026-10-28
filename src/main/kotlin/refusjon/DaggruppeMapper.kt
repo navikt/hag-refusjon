@@ -40,22 +40,30 @@ internal fun List<Dag>.tilDaggrupper(anvendt6G: BigDecimal): List<Daggruppe> =
         }
 
 private fun Dag.tilDaggruppe(anvendt6G: BigDecimal): Daggruppe? {
-    val refusjonskravPerAar = refusjonskravPerAar(beloepKrevdRefusjonPerMaaned, beloepKrevdRefusjonPerDag)
+    val refusjonskravPerAar =
+        refusjonskravPerAar(beloepKrevdRefusjonPerMaaned, beloepKrevdRefusjonPerDag)
     val forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar, anvendt6G, sykdomsgrad)
+    val sykepengeStatus = tilSykepengeStatus(forventetRefusjon)
 
-    return tilSykepengeStatus(forventetRefusjon)?.let { sykepengeStatus ->
-        Daggruppe(
-            antallDager = 1,
-            sykepengeStatus = sykepengeStatus,
-            sykdomsgrad = sykdomsgrad,
-            beloepKrevdRefusjonPerDag = beloepKrevdRefusjonPerDag,
-            beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
-            beloepForventetRefusjon = forventetRefusjon.tilHeleKroner(),
-            beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
-            begrensetTil6G =
-                sykepengeStatus != SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER && erBegrensetTil6G(refusjonskravPerAar, anvendt6G),
-        )
+    // Dager utenfor daggruppene skal ikke ha utbetaling til arbeidsgiver
+    if (sykepengeStatus == null) {
+        check(beloepUtbetaltTilArbeidsgiver == 0) {
+            "Fant utbetaling til arbeidsgiver på $dato med dagtype $dagtype, som ikke er forventet."
+        }
+        return null
     }
+
+    return Daggruppe(
+        antallDager = 1,
+        sykepengeStatus = sykepengeStatus,
+        sykdomsgrad = sykdomsgrad,
+        beloepKrevdRefusjonPerDag = beloepKrevdRefusjonPerDag,
+        beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
+        beloepForventetRefusjon = forventetRefusjon.tilHeleKroner(),
+        beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
+        begrensetTil6G =
+            sykepengeStatus != SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER && erBegrensetTil6G(refusjonskravPerAar, anvendt6G),
+    )
 }
 
 private fun Dag.tilSykepengeStatus(forventetRefusjon: BigDecimal): SykepengeStatus? =

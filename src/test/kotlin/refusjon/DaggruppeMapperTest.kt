@@ -1,5 +1,6 @@
 package no.nav.helsearbeidsgiver.refusjon
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -38,6 +39,22 @@ class DaggruppeMapperTest :
                     Dagtype.UKJENT to null,
                 ) { (dagtype, forventetStatus) ->
                     daggrupper(dag(august(3), dagtype)).map { it.sykepengeStatus } shouldBe listOfNotNull(forventetStatus)
+                }
+            }
+
+            context("feiler ved utbetaling til arbeidsgiver på dager utenfor daggruppene") {
+                withData(
+                    Dagtype.ARBEIDSGIVERPERIODE,
+                    Dagtype.HELG,
+                    Dagtype.FRI,
+                    Dagtype.FERIE,
+                    Dagtype.PERMISJON,
+                    Dagtype.ARBEIDSDAG,
+                    Dagtype.UKJENT,
+                ) { dagtype ->
+                    shouldThrow<IllegalStateException> {
+                        daggrupper(dag(august(3), dagtype, beloepUtbetaltTilArbeidsgiver = 1))
+                    }
                 }
             }
 
@@ -240,7 +257,7 @@ private fun dag(
     dato: LocalDate,
     dagtype: Dagtype = Dagtype.NAV_DAG,
     sykdomsgrad: Int = 100,
-    beloepUtbetaltTilArbeidsgiver: Int = DAGSATS * sykdomsgrad / 100,
+    beloepUtbetaltTilArbeidsgiver: Int = if (dagtype == Dagtype.NAV_DAG) DAGSATS * sykdomsgrad / 100 else 0,
     beloepKrevdRefusjonPerDag: Int = DAGSATS,
     beloepKrevdRefusjonPerMaaned: Double? = REFUSJONSKRAV_PER_MAANED,
 ): Dag =

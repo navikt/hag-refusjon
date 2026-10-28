@@ -72,7 +72,7 @@ class RefusjonUtfallMapperTest :
             }
         }
 
-        test("grupperer dagene og summerer utbetalt beløp for alle dager") {
+        test("grupperer dagene og summerer beløpene fra daggruppene") {
             val melding =
                 arbeidstakerVedtakMeldingMock(fnr, orgnr).copy(
                     utbetalingsdager =
@@ -165,7 +165,10 @@ class RefusjonUtfallMapperTest :
         test("beholder desimaler i refusjonsbeløp per måned") {
             val refusjonskrav = listOf(InntektsmeldingRefusjonskrav(imId, Refusjon(beloepPerMaaned = 30000.5, endringer = emptyList())))
 
-            tilDager(listOf(utbetalingsdag(LocalDate.of(2026, 7, 28))), refusjonskrav).single().beloepKrevdRefusjonPerMaaned shouldBe
+            tilDager(
+                listOf(utbetalingsdag(LocalDate.of(2026, 7, 28))),
+                refusjonskrav,
+            ).single().beloepKrevdRefusjonPerMaaned shouldBe
                 30000.5
         }
 

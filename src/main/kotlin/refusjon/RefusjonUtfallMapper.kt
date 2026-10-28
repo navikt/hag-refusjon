@@ -17,8 +17,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
     arbeidsgiverNavn: String,
     sykmeldtNavn: String,
 ): RefusjonUtfall {
-    val dager = tilDager(refusjonskrav)
-    val daggrupper = dager.tilDaggrupper(anvendt6G = anvendtSeksG.toBigDecimal())
+    val daggrupper = tilDager(refusjonskrav).tilDaggrupper(anvendt6G = anvendtSeksG.toBigDecimal())
 
     return RefusjonUtfall(
         refusjonUtfallId = refusjonUtfallId,
@@ -34,7 +33,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
         arbeidsgiverNavn = arbeidsgiverNavn,
         daggrupper = daggrupper,
         beloepForventetRefusjon = daggrupper.sumOf { it.beloepForventetRefusjon },
-        beloepUtbetaltTilArbeidsgiver = dager.sumOf { it.beloepUtbetaltTilArbeidsgiver },
+        beloepUtbetaltTilArbeidsgiver = daggrupper.sumOf { it.beloepUtbetaltTilArbeidsgiver },
         dagerIgjenMedRettTilSykepenger = DAGER_IGJEN_MED_RETT_TIL_SYKEPENGER,
         arbeidstakerVedtakMelding = this,
     )
