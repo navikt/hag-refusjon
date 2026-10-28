@@ -10,6 +10,29 @@ import java.math.RoundingMode
 
 class RefusjonsberegningTest :
     FunSpec({
+        context("refusjonskravPerAar") {
+            test("ganger refusjonskrav per måned med 12") {
+                refusjonskravPerAar(refusjonskravPerMaaned = 26000.5, refusjonskravPerDag = 1000) shouldBeEqualComparingTo
+                    BigDecimal("312006")
+            }
+
+            test("bruker refusjonskrav per dag ganger 260 når refusjonskrav per måned mangler") {
+                refusjonskravPerAar(refusjonskravPerMaaned = null, refusjonskravPerDag = 1200) shouldBeEqualComparingTo
+                    BigDecimal("312000")
+            }
+        }
+
+        context("erBegrensetTil6G") {
+            withData(
+                nameFn = { (krav, forventet) -> "refusjonskrav $krav gir $forventet" },
+                "819295" to true,
+                "819294" to false,
+                "819293.99" to false,
+            ) { (krav, forventet) ->
+                erBegrensetTil6G(BigDecimal(krav), ANVENDT_6G) shouldBe forventet
+            }
+        }
+
         context("forventetRefusjonPerDag") {
             test("deler årlig refusjonskrav på 260 virkedager") {
                 forventetRefusjonPerDag(BigDecimal("312000"), ANVENDT_6G, sykdomsgrad = 100) shouldBeEqualComparingTo BigDecimal("1200")

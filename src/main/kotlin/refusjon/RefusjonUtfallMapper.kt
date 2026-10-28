@@ -5,6 +5,9 @@ import no.nav.helsearbeidsgiver.refusjonskrav.InntektsmeldingRefusjonskrav
 import java.time.LocalDate
 import kotlin.uuid.Uuid
 
+// TODO: Midlertidig hardkodet. Dager igjen med rett til sykepenger skal komme fra sas, og må på plass før vi sier oss ferdige.
+internal const val DAGER_IGJEN_MED_RETT_TIL_SYKEPENGER = 101
+
 fun ArbeidstakerVedtakMelding.hagInntektsmeldingReferanser(): List<Uuid> =
     utbetalingsdager.mapNotNull { it.forespurtRefusjon.hagInntektsmeldingReferanse }.distinct()
 
@@ -14,7 +17,8 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
     arbeidsgiverNavn: String,
     sykmeldtNavn: String,
 ): RefusjonUtfall {
-    val refusjonskravPerInntektsmelding = refusjonskrav.associate { it.inntektsmeldingId to it.refusjonskrav }
+    val dager = tilDager(refusjonskrav)
+    val daggrupper = dager.tilDaggrupper()
 
     return RefusjonUtfall(
         refusjonUtfallId = refusjonUtfallId,
@@ -24,26 +28,29 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
         fom = fom,
         tom = tom,
         sykepengegrunnlag = sykepengegrunnlag,
-        utfallTilArbeidsgiver = vedtaksUtfallTilArbeidsgiver.tilUtfall(),
-        fattetTidspunkt = vedtakFattetTidspunkt,
+        utfallTilArbeidsgiver = Utfall.INNVILGELSE,
+        arbeidstakervedtakFattetTidspunkt = vedtakFattetTidspunkt,
         sykmeldtNavn = sykmeldtNavn,
         arbeidsgiverNavn = arbeidsgiverNavn,
-        dager = utbetalingsdager.map { it.tilDag(refusjonskravPerInntektsmelding) },
+        daggrupper = daggrupper,
+        beloepKrevdAvArbeidsgiver = daggrupper.sumOf { it.beloepKrevdRefusjon },
+        beloepUtbetaltTilArbeidsgiver = dager.sumOf { it.beloepUtbetaltTilArbeidsgiver },
+        dagerIgjenMedRettTilSykepenger = DAGER_IGJEN_MED_RETT_TIL_SYKEPENGER,
         arbeidstakerVedtakMelding = this,
     )
 }
 
-private fun VedtaksUtfall.tilUtfall(): Utfall =
-    when (this) {
-        VedtaksUtfall.AVSLAG -> Utfall.AVSLAG
-        VedtaksUtfall.DELVIS_INNVILGELSE -> Utfall.DELVIS_INNVILGELSE
-        VedtaksUtfall.INNVILGELSE -> Utfall.INNVILGELSE
-    }
+internal fun ArbeidstakerVedtakMelding.tilDager(refusjonskrav: List<InntektsmeldingRefusjonskrav>): List<Dag> {
+    val refusjonskravPerInntektsmelding = refusjonskrav.associate { it.inntektsmeldingId to it.refusjonskrav }
+
+    return utbetalingsdager.map { it.tilDag(refusjonskravPerInntektsmelding) }
+}
 
 private fun Utbetalingsdag.tilDag(refusjonskravPerInntektsmelding: Map<Uuid, Refusjon?>): Dag =
     Dag(
         dato = dato,
         dagtype = type.tilDagType(),
+        sykdomsgrad = sykdomsgrad,
         beloepUtbetaltTilArbeidsgiver = beloepTilArbeidsgiver,
         beloepKrevdRefusjonPerDag = forespurtRefusjon.beloep,
         beloepKrevdRefusjonPerMaaned =

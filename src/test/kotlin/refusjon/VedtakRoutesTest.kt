@@ -124,19 +124,25 @@ class VedtakRoutesTest :
                         tom = LocalDate.of(2026, 8, 3),
                         sykepengegrunnlag = 154999.92,
                         utfallTilArbeidsgiver = Utfall.INNVILGELSE,
-                        fattetTidspunkt = LocalDateTime.parse("2026-08-05T13:03:25.166498222"),
+                        arbeidstakervedtakFattetTidspunkt = LocalDateTime.parse("2026-08-05T13:03:25.166498222"),
                         arbeidsgiverNavn = ARBEIDSGIVER_NAVN,
                         sykmeldtNavn = SYKMELDT_NAVN,
-                        dager =
+                        daggrupper =
                             listOf(
-                                Dag(
-                                    dato = LocalDate.of(2026, 7, 28),
-                                    dagtype = DagType.SYKEPENGER,
-                                    beloepUtbetaltTilArbeidsgiver = 1431,
+                                Daggruppe(
+                                    antallDager = 1,
+                                    sykepengeStatus = SykepengeStatus.RETT_TIL_SYKEPENGER,
+                                    sykdomsgrad = 100,
                                     beloepKrevdRefusjonPerDag = 1431,
                                     beloepKrevdRefusjonPerMaaned = null,
+                                    beloepKrevdRefusjon = 1431,
+                                    beloepUtbetaltTilArbeidsgiver = 1431,
+                                    begrensetTil6G = false,
                                 ),
                             ),
+                        beloepKrevdAvArbeidsgiver = 1431,
+                        beloepUtbetaltTilArbeidsgiver = 1431,
+                        dagerIgjenMedRettTilSykepenger = DAGER_IGJEN_MED_RETT_TIL_SYKEPENGER,
                         arbeidstakerVedtakMelding =
                             gyldigMelding(FNR, ORGNR)
                                 .parseJson()

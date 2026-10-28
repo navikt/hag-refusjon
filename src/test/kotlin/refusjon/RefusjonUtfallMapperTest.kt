@@ -26,13 +26,13 @@ class RefusjonUtfallMapperTest :
             imReferanse: Uuid? = imId,
         ): Utbetalingsdag = utbetalingsdagMock(dato = dato, hagInntektsmeldingReferanse = imReferanse)
 
-        fun map(
+        fun tilDager(
             utbetalingsdager: List<Utbetalingsdag>,
             refusjonskrav: List<InntektsmeldingRefusjonskrav>,
-        ): RefusjonUtfall =
+        ): List<Dag> =
             arbeidstakerVedtakMeldingMock(fnr, orgnr)
                 .copy(utbetalingsdager = utbetalingsdager)
-                .tilRefusjonUtfall(refusjonUtfallId, refusjonskrav, "Arbeidsgiver AS", "Ola Nordmann")
+                .tilDager(refusjonskrav)
 
         test("mapper toppnivåfelter fra vedtaket") {
             val melding = arbeidstakerVedtakMeldingMock(fnr, orgnr)
@@ -47,11 +47,63 @@ class RefusjonUtfallMapperTest :
                     tom = melding.tom,
                     sykepengegrunnlag = melding.sykepengegrunnlag,
                     utfallTilArbeidsgiver = Utfall.INNVILGELSE,
-                    fattetTidspunkt = melding.vedtakFattetTidspunkt,
+                    arbeidstakervedtakFattetTidspunkt = melding.vedtakFattetTidspunkt,
                     sykmeldtNavn = "Ola Nordmann",
                     arbeidsgiverNavn = "Arbeidsgiver AS",
-                    dager = emptyList(),
+                    daggrupper = emptyList(),
+                    beloepKrevdAvArbeidsgiver = 0,
+                    beloepUtbetaltTilArbeidsgiver = 0,
+                    dagerIgjenMedRettTilSykepenger = DAGER_IGJEN_MED_RETT_TIL_SYKEPENGER,
                     arbeidstakerVedtakMelding = melding,
+                )
+        }
+
+        context("utfall til arbeidsgiver er alltid innvilgelse") {
+            withData(VedtaksUtfall.entries) { vedtaksUtfall ->
+                val refusjonUtfall =
+                    arbeidstakerVedtakMeldingMock(fnr, orgnr)
+                        .copy(vedtaksUtfallTilArbeidsgiver = vedtaksUtfall)
+                        .tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+
+                @Suppress("DEPRECATION")
+                val utfallTilArbeidsgiver = refusjonUtfall.utfallTilArbeidsgiver
+
+                utfallTilArbeidsgiver shouldBe Utfall.INNVILGELSE
+            }
+        }
+
+        test("grupperer dagene og summerer utbetalt beløp for alle dager") {
+            val melding =
+                arbeidstakerVedtakMeldingMock(fnr, orgnr).copy(
+                    utbetalingsdager =
+                        listOf(
+                            utbetalingsdagMock(dato = LocalDate.of(2026, 7, 31), hagInntektsmeldingReferanse = null),
+                            utbetalingsdagMock(
+                                dato = LocalDate.of(2026, 8, 1),
+                                type = Utbetalingsdagtype.NAV_HELG_DAG,
+                                beloepTilArbeidsgiver = 0,
+                                hagInntektsmeldingReferanse = null,
+                            ),
+                            utbetalingsdagMock(dato = LocalDate.of(2026, 8, 3), hagInntektsmeldingReferanse = null),
+                        ),
+                )
+
+            val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+
+            refusjonUtfall.beloepKrevdAvArbeidsgiver shouldBe 2000
+            refusjonUtfall.beloepUtbetaltTilArbeidsgiver shouldBe 2000
+            refusjonUtfall.daggrupper shouldBe
+                listOf(
+                    Daggruppe(
+                        antallDager = 2,
+                        sykepengeStatus = SykepengeStatus.RETT_TIL_SYKEPENGER,
+                        sykdomsgrad = 100,
+                        beloepKrevdRefusjonPerDag = 1000,
+                        beloepKrevdRefusjonPerMaaned = null,
+                        beloepKrevdRefusjon = 2000,
+                        beloepUtbetaltTilArbeidsgiver = 2000,
+                        begrensetTil6G = false,
+                    ),
                 )
         }
 
@@ -59,11 +111,12 @@ class RefusjonUtfallMapperTest :
             val dato = LocalDate.of(2026, 7, 28)
             val refusjonskrav = listOf(InntektsmeldingRefusjonskrav(imId, Refusjon(beloepPerMaaned = 30000.0, endringer = emptyList())))
 
-            map(listOf(utbetalingsdag(dato)), refusjonskrav).dager shouldBe
+            tilDager(listOf(utbetalingsdag(dato)), refusjonskrav) shouldBe
                 listOf(
                     Dag(
                         dato = dato,
                         dagtype = DagType.SYKEPENGER,
+                        sykdomsgrad = 100,
                         beloepUtbetaltTilArbeidsgiver = 1000,
                         beloepKrevdRefusjonPerDag = 1000,
                         beloepKrevdRefusjonPerMaaned = 30000.0,
@@ -90,14 +143,14 @@ class RefusjonUtfallMapperTest :
                 listOf(28, 29, 30, 31).map { LocalDate.of(2026, 7, it) } +
                     listOf(3, 4).map { LocalDate.of(2026, 8, it) }
 
-            map(dager.map { utbetalingsdag(it) }, refusjonskrav).dager.map { it.beloepKrevdRefusjonPerMaaned } shouldBe
+            tilDager(dager.map { utbetalingsdag(it) }, refusjonskrav).map { it.beloepKrevdRefusjonPerMaaned } shouldBe
                 listOf(30000.0, 30000.0, 20000.0, 20000.0, 10000.0, 10000.0)
         }
 
         test("beholder desimaler i refusjonsbeløp per måned") {
             val refusjonskrav = listOf(InntektsmeldingRefusjonskrav(imId, Refusjon(beloepPerMaaned = 30000.5, endringer = emptyList())))
 
-            map(listOf(utbetalingsdag(LocalDate.of(2026, 7, 28))), refusjonskrav).dager.single().beloepKrevdRefusjonPerMaaned shouldBe
+            tilDager(listOf(utbetalingsdag(LocalDate.of(2026, 7, 28))), refusjonskrav).single().beloepKrevdRefusjonPerMaaned shouldBe
                 30000.5
         }
 
@@ -142,8 +195,7 @@ class RefusjonUtfallMapperTest :
             ) { (_, testdata) ->
                 val (referanse, refusjonskrav) = testdata
 
-                map(listOf(utbetalingsdag(LocalDate.of(2026, 7, 28), referanse)), refusjonskrav)
-                    .dager
+                tilDager(listOf(utbetalingsdag(LocalDate.of(2026, 7, 28), referanse)), refusjonskrav)
                     .single()
                     .beloepKrevdRefusjonPerMaaned shouldBe null
             }

@@ -21,11 +21,15 @@ data class RefusjonUtfall(
     val fom: LocalDate,
     val tom: LocalDate,
     val sykepengegrunnlag: Double,
+    @Deprecated("Er alltid INNVILGELSE og skal fjernes. Beholdes fordi lps-api krever feltet.")
     val utfallTilArbeidsgiver: Utfall,
-    val fattetTidspunkt: LocalDateTime,
+    val arbeidstakervedtakFattetTidspunkt: LocalDateTime,
     val sykmeldtNavn: String,
     val arbeidsgiverNavn: String,
-    val dager: List<Dag>,
+    val daggrupper: List<Daggruppe>,
+    val beloepKrevdAvArbeidsgiver: Int,
+    val beloepUtbetaltTilArbeidsgiver: Int,
+    val dagerIgjenMedRettTilSykepenger: Int,
     val arbeidstakerVedtakMelding: ArbeidstakerVedtakMelding,
 )
 
@@ -37,23 +41,20 @@ enum class Utfall {
 }
 
 @Serializable
-data class Dag(
-    val dato: LocalDate,
-    val dagtype: DagType,
-    val beloepUtbetaltTilArbeidsgiver: Int,
+data class Daggruppe(
+    val antallDager: Int,
+    val sykepengeStatus: SykepengeStatus,
+    val sykdomsgrad: Int,
+    val beloepKrevdRefusjon: Int,
     val beloepKrevdRefusjonPerDag: Int,
     val beloepKrevdRefusjonPerMaaned: Double?,
+    val beloepUtbetaltTilArbeidsgiver: Int,
+    val begrensetTil6G: Boolean,
 )
 
 @Serializable
-enum class DagType {
-    SYKEPENGER,
-    ARBEIDSGIVERPERIODE,
-    HELG,
-    FRI,
-    FERIE,
-    PERMISJON,
-    ARBEIDSDAG,
-    IKKE_RETT_PAA_SYKEPENGER,
-    UKJENT,
+enum class SykepengeStatus {
+    RETT_TIL_SYKEPENGER,
+    RETT_TIL_SYKEPENGER_DIFFERANSE,
+    IKKE_RETT_TIL_SYKEPENGER,
 }
