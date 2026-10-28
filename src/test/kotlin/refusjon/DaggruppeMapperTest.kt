@@ -5,16 +5,18 @@ import io.kotest.datatest.withData
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import java.math.RoundingMode
 import java.time.DayOfWeek
 import java.time.LocalDate
 
-// 26 000 kr per måned × 12 / 260 virkedager = 1 200 kr per dag
-private const val REFUSJONSKRAV_PER_MAANED = 26000.0
-private const val DAGSATS = 1200
+private const val MAANEDER_PER_AAR = 12
+private const val VIRKEDAGER_PER_AAR = 260
 
-// 80 000 kr × 12 = 960 000 kr er over 6G. Refusjonen begrenses til 819 294 / 260 ≈ 3 151,13 kr per dag.
+private const val REFUSJONSKRAV_PER_MAANED = 26000.0
+private val DAGSATS = (REFUSJONSKRAV_PER_MAANED * MAANEDER_PER_AAR / VIRKEDAGER_PER_AAR).toInt()
+
 private const val REFUSJONSKRAV_OVER_6G_PER_MAANED = 80000.0
-private const val DAGSATS_6G = 3151
+private val DAGSATS_6G = ANVENDT_6G.divide(VIRKEDAGER_PER_AAR.toBigDecimal(), 0, RoundingMode.DOWN).toInt()
 
 class DaggruppeMapperTest :
     FunSpec({
@@ -208,9 +210,12 @@ class DaggruppeMapperTest :
             }
 
             test("refusjonskrav på nøyaktig 6G er ikke begrenset") {
-                // 68 274,50 kr × 12 = 819 294 kr
                 daggrupper(
-                    dag(august(3), beloepKrevdRefusjonPerMaaned = 68274.5, beloepUtbetaltTilArbeidsgiver = DAGSATS_6G),
+                    dag(
+                        august(3),
+                        beloepKrevdRefusjonPerMaaned = ANVENDT_6G.toDouble() / MAANEDER_PER_AAR,
+                        beloepUtbetaltTilArbeidsgiver = DAGSATS_6G,
+                    ),
                 ).single().begrensetTil6G shouldBe false
             }
 
@@ -260,4 +265,4 @@ private fun daggruppe(
         begrensetTil6G = begrensetTil6G,
     )
 
-private fun daggrupper(vararg dager: Dag): List<Daggruppe> = dager.toList().tilDaggrupper()
+private fun daggrupper(vararg dager: Dag): List<Daggruppe> = dager.toList().tilDaggrupper(ANVENDT_6G)

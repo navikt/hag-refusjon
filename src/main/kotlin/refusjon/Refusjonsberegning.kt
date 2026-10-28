@@ -3,9 +3,6 @@ package no.nav.helsearbeidsgiver.refusjon
 import java.math.BigDecimal
 import java.math.MathContext
 
-// TODO: Midlertidig hardkodet. Anvendt 6G skal komme fra sis, og må på plass før vi sier oss ferdige.
-internal val ANVENDT_6G = BigDecimal("819294")
-
 private val MAANEDER_PER_AAR = BigDecimal("12")
 private val VIRKEDAGER_PER_AAR = BigDecimal("260")
 private val HUNDRE_PROSENT = BigDecimal("100")

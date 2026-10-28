@@ -2,11 +2,14 @@ package no.nav.helsearbeidsgiver.refusjon
 
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
+
+val ANVENDT_6G = BigDecimal("819294")
 
 fun arbeidstakerVedtakMeldingMock(
     fnr: Fnr,
@@ -24,6 +27,7 @@ fun arbeidstakerVedtakMeldingMock(
         skjaeringstidspunkt = LocalDate.of(2026, 7, 1),
         dokumenter = emptyList(),
         sykepengegrunnlag = 154999.92,
+        anvendtSeksG = ANVENDT_6G.toDouble(),
         vedtakFattetTidspunkt = LocalDateTime.of(2026, 8, 5, 13, 3, 25),
         vedtaksUtfallTilArbeidsgiver = VedtaksUtfall.INNVILGELSE,
         saksbehandlerIdent = null,

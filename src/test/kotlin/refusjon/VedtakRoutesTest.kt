@@ -606,6 +606,7 @@ private fun gyldigMelding(
         }
       ],
       "sykepengegrunnlag": 154999.92,
+      "anvendtSeksG": 819294.0,
       "utbetalingsdager": [
         {
           "dato": "2026-07-28",

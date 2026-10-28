@@ -27,9 +27,9 @@ internal enum class DagType {
 
 // Påfølgende dager med lik status, sykdomsgrad, refusjonskrav og 6G-begrensning slås sammen til én daggruppe.
 // Dager som er filtrert bort (f.eks. helg) bryter ikke en daggruppe.
-internal fun List<Dag>.tilDaggrupper(): List<Daggruppe> =
+internal fun List<Dag>.tilDaggrupper(anvendt6G: BigDecimal): List<Daggruppe> =
     sortedBy { it.dato }
-        .mapNotNull { it.tilDaggruppe() }
+        .mapNotNull { it.tilDaggruppe(anvendt6G) }
         .fold(emptyList()) { daggrupper, neste ->
             val forrige = daggrupper.lastOrNull()
             if (forrige != null && forrige.kanSlaasSammenMed(neste)) {
@@ -39,10 +39,10 @@ internal fun List<Dag>.tilDaggrupper(): List<Daggruppe> =
             }
         }
 
-private fun Dag.tilDaggruppe(): Daggruppe? {
+private fun Dag.tilDaggruppe(anvendt6G: BigDecimal): Daggruppe? {
     val refusjonskravPerAar = refusjonskravPerAar(beloepKrevdRefusjonPerMaaned, beloepKrevdRefusjonPerDag)
 
-    return tilSykepengeStatus(refusjonskravPerAar)?.let { sykepengeStatus ->
+    return tilSykepengeStatus(refusjonskravPerAar, anvendt6G)?.let { sykepengeStatus ->
         Daggruppe(
             antallDager = 1,
             sykepengeStatus = sykepengeStatus,
@@ -52,15 +52,18 @@ private fun Dag.tilDaggruppe(): Daggruppe? {
             beloepKrevdRefusjon = beloepKrevdRefusjonPerDag,
             beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
             begrensetTil6G =
-                sykepengeStatus != SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER && erBegrensetTil6G(refusjonskravPerAar, ANVENDT_6G),
+                sykepengeStatus != SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER && erBegrensetTil6G(refusjonskravPerAar, anvendt6G),
         )
     }
 }
 
-private fun Dag.tilSykepengeStatus(refusjonskravPerAar: BigDecimal): SykepengeStatus? =
+private fun Dag.tilSykepengeStatus(
+    refusjonskravPerAar: BigDecimal,
+    anvendt6G: BigDecimal,
+): SykepengeStatus? =
     when (dagtype) {
         DagType.SYKEPENGER -> {
-            if (harDifferanseIRefusjon(refusjonskravPerAar)) {
+            if (harDifferanseIRefusjon(refusjonskravPerAar, anvendt6G)) {
                 SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE
             } else {
                 SykepengeStatus.RETT_TIL_SYKEPENGER
@@ -83,9 +86,12 @@ private fun Dag.tilSykepengeStatus(refusjonskravPerAar: BigDecimal): SykepengeSt
         }
     }
 
-private fun Dag.harDifferanseIRefusjon(refusjonskravPerAar: BigDecimal): Boolean =
+private fun Dag.harDifferanseIRefusjon(
+    refusjonskravPerAar: BigDecimal,
+    anvendt6G: BigDecimal,
+): Boolean =
     erDifferanseIRefusjon(
-        forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar, ANVENDT_6G, sykdomsgrad),
+        forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar, anvendt6G, sykdomsgrad),
         faktiskRefusjon = beloepUtbetaltTilArbeidsgiver.toBigDecimal(),
     )
 

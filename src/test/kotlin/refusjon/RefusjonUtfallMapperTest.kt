@@ -107,6 +107,21 @@ class RefusjonUtfallMapperTest :
                 )
         }
 
+        test("bruker anvendt 6G fra vedtaket") {
+            // 1 000 kr per dag × 260 = 260 000 kr per år, som er over en anvendt 6G på 200 000 kr
+            val melding =
+                arbeidstakerVedtakMeldingMock(fnr, orgnr).copy(
+                    anvendtSeksG = 200000.0,
+                    utbetalingsdager = listOf(utbetalingsdagMock(hagInntektsmeldingReferanse = null)),
+                )
+
+            melding
+                .tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+                .daggrupper
+                .single()
+                .begrensetTil6G shouldBe true
+        }
+
         test("mapper utbetalingsdag til dag med refusjonskrav fra refererte inntektsmelding") {
             val dato = LocalDate.of(2026, 7, 28)
             val refusjonskrav = listOf(InntektsmeldingRefusjonskrav(imId, Refusjon(beloepPerMaaned = 30000.0, endringer = emptyList())))
