@@ -51,7 +51,7 @@ class RefusjonUtfallMapperTest :
                     sykmeldtNavn = "Ola Nordmann",
                     arbeidsgiverNavn = "Arbeidsgiver AS",
                     daggrupper = emptyList(),
-                    beloepKrevdAvArbeidsgiver = 0,
+                    beloepForventetRefusjon = 0,
                     beloepUtbetaltTilArbeidsgiver = 0,
                     dagerIgjenMedRettTilSykepenger = DAGER_IGJEN_MED_RETT_TIL_SYKEPENGER,
                     arbeidstakerVedtakMelding = melding,
@@ -90,7 +90,7 @@ class RefusjonUtfallMapperTest :
 
             val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
 
-            refusjonUtfall.beloepKrevdAvArbeidsgiver shouldBe 2000
+            refusjonUtfall.beloepForventetRefusjon shouldBe 2000
             refusjonUtfall.beloepUtbetaltTilArbeidsgiver shouldBe 2000
             refusjonUtfall.daggrupper shouldBe
                 listOf(
@@ -100,7 +100,7 @@ class RefusjonUtfallMapperTest :
                         sykdomsgrad = 100,
                         beloepKrevdRefusjonPerDag = 1000,
                         beloepKrevdRefusjonPerMaaned = null,
-                        beloepKrevdRefusjon = 2000,
+                        beloepForventetRefusjon = 2000,
                         beloepUtbetaltTilArbeidsgiver = 2000,
                         begrensetTil6G = false,
                     ),

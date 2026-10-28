@@ -83,13 +83,20 @@ class DaggruppeMapperTest :
                 ) shouldBe listOf(daggruppe(antallDager = 2, beloepUtbetaltTilArbeidsgiver = 2 * DAGSATS - 1))
             }
 
-            test("summerer krevd refusjon i daggruppen, også for dager uten rett til sykepenger") {
+            test("summerer forventet refusjon justert for sykdomsgrad, også for dager uten rett til sykepenger") {
                 daggrupper(
                     dag(august(3), sykdomsgrad = 50),
                     dag(august(4), sykdomsgrad = 50),
                     dag(august(5), Dagtype.IKKE_RETT_PAA_SYKEPENGER, beloepUtbetaltTilArbeidsgiver = 0),
                     dag(august(6), Dagtype.IKKE_RETT_PAA_SYKEPENGER, beloepUtbetaltTilArbeidsgiver = 0),
-                ).map { it.beloepKrevdRefusjon } shouldBe listOf(2 * DAGSATS, 2 * DAGSATS)
+                ).map { it.beloepForventetRefusjon } shouldBe listOf(2 * (DAGSATS / 2), 2 * DAGSATS)
+            }
+
+            test("forventet refusjon begrenses til 6G") {
+                fun dagOver6G(dato: LocalDate) =
+                    dag(dato, beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED, beloepUtbetaltTilArbeidsgiver = DAGSATS_6G)
+
+                daggrupper(dagOver6G(august(3)), dagOver6G(august(4))).single().beloepForventetRefusjon shouldBe 2 * DAGSATS_6G
             }
 
             context("starter ny daggruppe når") {
@@ -185,6 +192,7 @@ class DaggruppeMapperTest :
                         beloepUtbetaltTilArbeidsgiver = 0,
                         status = SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER,
                         beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED,
+                        beloepForventetRefusjon = DAGSATS_6G,
                         begrensetTil6G = false,
                     )
             }
@@ -200,6 +208,7 @@ class DaggruppeMapperTest :
                         antallDager = 1,
                         beloepUtbetaltTilArbeidsgiver = DAGSATS_6G,
                         beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED,
+                        beloepForventetRefusjon = DAGSATS_6G,
                         begrensetTil6G = true,
                     )
             }
@@ -251,7 +260,7 @@ private fun daggruppe(
     sykdomsgrad: Int = 100,
     beloepKrevdRefusjonPerDag: Int = DAGSATS,
     beloepKrevdRefusjonPerMaaned: Double? = REFUSJONSKRAV_PER_MAANED,
-    beloepKrevdRefusjon: Int = antallDager * beloepKrevdRefusjonPerDag,
+    beloepForventetRefusjon: Int = antallDager * DAGSATS * sykdomsgrad / 100,
     begrensetTil6G: Boolean = false,
 ): Daggruppe =
     Daggruppe(
@@ -260,7 +269,7 @@ private fun daggruppe(
         sykdomsgrad = sykdomsgrad,
         beloepKrevdRefusjonPerDag = beloepKrevdRefusjonPerDag,
         beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
-        beloepKrevdRefusjon = beloepKrevdRefusjon,
+        beloepForventetRefusjon = beloepForventetRefusjon,
         beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
         begrensetTil6G = begrensetTil6G,
     )

@@ -33,7 +33,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
         sykmeldtNavn = sykmeldtNavn,
         arbeidsgiverNavn = arbeidsgiverNavn,
         daggrupper = daggrupper,
-        beloepKrevdAvArbeidsgiver = daggrupper.sumOf { it.beloepKrevdRefusjon },
+        beloepForventetRefusjon = daggrupper.sumOf { it.beloepForventetRefusjon },
         beloepUtbetaltTilArbeidsgiver = dager.sumOf { it.beloepUtbetaltTilArbeidsgiver },
         dagerIgjenMedRettTilSykepenger = DAGER_IGJEN_MED_RETT_TIL_SYKEPENGER,
         arbeidstakerVedtakMelding = this,

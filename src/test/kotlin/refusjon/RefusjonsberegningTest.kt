@@ -78,4 +78,16 @@ class RefusjonsberegningTest :
                     forventetResultat
             }
         }
+
+        context("tilHeleKroner") {
+            withData(
+                nameFn = { (beloep, forventet) -> "$beloep blir $forventet" },
+                "3151.13" to 3151,
+                "1200.49" to 1200,
+                "1200.5" to 1201,
+                "1200" to 1200,
+            ) { (beloep, forventet) ->
+                BigDecimal(beloep).tilHeleKroner() shouldBe forventet
+            }
+        }
     })

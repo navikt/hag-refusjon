@@ -41,15 +41,16 @@ internal fun List<Dag>.tilDaggrupper(anvendt6G: BigDecimal): List<Daggruppe> =
 
 private fun Dag.tilDaggruppe(anvendt6G: BigDecimal): Daggruppe? {
     val refusjonskravPerAar = refusjonskravPerAar(beloepKrevdRefusjonPerMaaned, beloepKrevdRefusjonPerDag)
+    val forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar, anvendt6G, sykdomsgrad)
 
-    return tilSykepengeStatus(refusjonskravPerAar, anvendt6G)?.let { sykepengeStatus ->
+    return tilSykepengeStatus(forventetRefusjon)?.let { sykepengeStatus ->
         Daggruppe(
             antallDager = 1,
             sykepengeStatus = sykepengeStatus,
             sykdomsgrad = sykdomsgrad,
             beloepKrevdRefusjonPerDag = beloepKrevdRefusjonPerDag,
             beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
-            beloepKrevdRefusjon = beloepKrevdRefusjonPerDag,
+            beloepForventetRefusjon = forventetRefusjon.tilHeleKroner(),
             beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
             begrensetTil6G =
                 sykepengeStatus != SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER && erBegrensetTil6G(refusjonskravPerAar, anvendt6G),
@@ -57,13 +58,10 @@ private fun Dag.tilDaggruppe(anvendt6G: BigDecimal): Daggruppe? {
     }
 }
 
-private fun Dag.tilSykepengeStatus(
-    refusjonskravPerAar: BigDecimal,
-    anvendt6G: BigDecimal,
-): SykepengeStatus? =
+private fun Dag.tilSykepengeStatus(forventetRefusjon: BigDecimal): SykepengeStatus? =
     when (dagtype) {
         Dagtype.NAV_DAG -> {
-            if (harDifferanseIRefusjon(refusjonskravPerAar, anvendt6G)) {
+            if (erDifferanseIRefusjon(forventetRefusjon, beloepUtbetaltTilArbeidsgiver.toBigDecimal())) {
                 SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE
             } else {
                 SykepengeStatus.RETT_TIL_SYKEPENGER
@@ -86,15 +84,6 @@ private fun Dag.tilSykepengeStatus(
         }
     }
 
-private fun Dag.harDifferanseIRefusjon(
-    refusjonskravPerAar: BigDecimal,
-    anvendt6G: BigDecimal,
-): Boolean =
-    erDifferanseIRefusjon(
-        forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar, anvendt6G, sykdomsgrad),
-        faktiskRefusjon = beloepUtbetaltTilArbeidsgiver.toBigDecimal(),
-    )
-
 private fun Daggruppe.kanSlaasSammenMed(neste: Daggruppe): Boolean =
     sykepengeStatus == neste.sykepengeStatus &&
         sykdomsgrad == neste.sykdomsgrad &&
@@ -105,6 +94,6 @@ private fun Daggruppe.kanSlaasSammenMed(neste: Daggruppe): Boolean =
 private fun Daggruppe.slaaSammenMed(neste: Daggruppe): Daggruppe =
     copy(
         antallDager = antallDager + neste.antallDager,
-        beloepKrevdRefusjon = beloepKrevdRefusjon + neste.beloepKrevdRefusjon,
+        beloepForventetRefusjon = beloepForventetRefusjon + neste.beloepForventetRefusjon,
         beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver + neste.beloepUtbetaltTilArbeidsgiver,
     )

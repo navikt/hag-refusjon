@@ -2,6 +2,7 @@ package no.nav.helsearbeidsgiver.refusjon
 
 import java.math.BigDecimal
 import java.math.MathContext
+import java.math.RoundingMode
 
 private val MAANEDER_PER_AAR = BigDecimal("12")
 private val VIRKEDAGER_PER_AAR = BigDecimal("260")
@@ -35,6 +36,8 @@ internal fun forventetRefusjonPerDag(
         .multiply(sykdomsgrad.toBigDecimal())
         .divide(VIRKEDAGER_PER_AAR * HUNDRE_PROSENT, MathContext.DECIMAL128)
 }
+
+internal fun BigDecimal.tilHeleKroner(): Int = setScale(0, RoundingMode.HALF_UP).toInt()
 
 // Avvik på inntil 1 kr i begge retninger skyldes avrunding i Spleis.
 internal fun erDifferanseIRefusjon(

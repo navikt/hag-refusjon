@@ -37,7 +37,7 @@ class RefusjonProducerTest :
                 sykmeldtNavn = "Ola Nordmann",
                 arbeidsgiverNavn = "Billys Bollefabrikk AS",
                 daggrupper = emptyList(),
-                beloepKrevdAvArbeidsgiver = 0,
+                beloepForventetRefusjon = 0,
                 beloepUtbetaltTilArbeidsgiver = 0,
                 dagerIgjenMedRettTilSykepenger = 101,
                 arbeidstakerVedtakMelding = arbeidstakerVedtakMeldingMock(fnr, orgnr),

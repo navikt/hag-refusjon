@@ -33,7 +33,7 @@ class RefusjonUtfallPdfDataTest :
             refusjonUtfall.daggrupper.shouldNotBeEmpty()
             pdfData.refusjonUtfallId shouldBe refusjonUtfall.refusjonUtfallId
             pdfData.daggrupper shouldBe refusjonUtfall.daggrupper
-            pdfData.beloepKrevdAvArbeidsgiver shouldBe refusjonUtfall.beloepKrevdAvArbeidsgiver
+            pdfData.beloepForventetRefusjon shouldBe refusjonUtfall.beloepForventetRefusjon
             pdfData.beloepUtbetaltTilArbeidsgiver shouldBe refusjonUtfall.beloepUtbetaltTilArbeidsgiver
             pdfData.dagerIgjenMedRettTilSykepenger shouldBe refusjonUtfall.dagerIgjenMedRettTilSykepenger
         }
