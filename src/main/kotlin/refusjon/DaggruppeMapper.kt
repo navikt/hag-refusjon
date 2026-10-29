@@ -1,33 +1,10 @@
 package no.nav.helsearbeidsgiver.refusjon
 
 import java.math.BigDecimal
-import java.time.LocalDate
-
-// Internt mellomsteg mellom utbetalingsdagene fra sis og daggruppene i RefusjonUtfall.
-internal data class Dag(
-    val dato: LocalDate,
-    val dagtype: Dagtype,
-    val sykdomsgrad: Int,
-    val beloepUtbetaltTilArbeidsgiver: Int,
-    val beloepKrevdRefusjonPerDag: Int,
-    val beloepKrevdRefusjonPerMaaned: Double?,
-)
-
-internal enum class Dagtype {
-    NAV_DAG,
-    ARBEIDSGIVERPERIODE,
-    HELG,
-    FRI,
-    FERIE,
-    PERMISJON,
-    ARBEIDSDAG,
-    IKKE_RETT_PAA_SYKEPENGER,
-    UKJENT,
-}
 
 // Påfølgende dager med lik status, sykdomsgrad, refusjonskrav og 6G-begrensning slås sammen til én daggruppe.
 // Dager som er filtrert bort (f.eks. helg) bryter ikke en daggruppe.
-internal fun List<Dag>.tilDaggrupper(anvendt6G: BigDecimal): List<Daggruppe> =
+fun List<Dag>.tilDaggrupper(anvendt6G: BigDecimal): List<Daggruppe> =
     sortedBy { it.dato }
         .mapNotNull { it.tilDaggruppe(anvendt6G) }
         .fold(emptyList()) { daggrupper, neste ->
@@ -48,7 +25,7 @@ private fun Dag.tilDaggruppe(anvendt6G: BigDecimal): Daggruppe? {
     // Dager utenfor daggruppene skal ikke ha utbetaling til arbeidsgiver
     if (sykepengeStatus == null) {
         check(beloepUtbetaltTilArbeidsgiver == 0) {
-            "Fant utbetaling til arbeidsgiver på $dato med dagtype $dagtype, som ikke er forventet."
+            "Fant utbetaling til arbeidsgiver på $dato med dagtype $dagtype. Dette er ikke forventet og vi feiler derfor refusjonsberegningen."
         }
         return null
     }
