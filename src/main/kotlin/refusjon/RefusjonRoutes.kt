@@ -13,6 +13,8 @@ import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
 import no.nav.helsearbeidsgiver.utils.genererRefusjonPdf
+import no.nav.helsearbeidsgiver.utils.json.toJson
+import no.nav.helsearbeidsgiver.utils.json.toPretty
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import no.nav.helsearbeidsgiver.utils.respondMedPDF
 import no.nav.helsearbeidsgiver.utils.toUuidOrNull
@@ -42,6 +44,10 @@ fun Route.vedtakRoutes(
                 return@post
             }
 
+        sikkerLogger().info(
+            "Mottok arbeidstakervedtak med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}:\n" +
+                melding.toJson(ArbeidstakerVedtakMelding.serializer()).toPretty(),
+        )
         logger.info("Mottok arbeidstakervedtak for vedtaksperiodeId ${melding.vedtaksperiodeId}.")
 
         // TODO: putt alle oppslag etc i Service / bg-jobb-kode
