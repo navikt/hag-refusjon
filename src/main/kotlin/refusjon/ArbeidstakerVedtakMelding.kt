@@ -29,6 +29,7 @@ data class ArbeidstakerVedtakMelding(
     val skjaeringstidspunkt: LocalDate,
     val dokumenter: List<Dokument>,
     val sykepengegrunnlag: Double,
+    val anvendtSeksG: Double,
     val utbetalingsdager: List<Utbetalingsdag> = emptyList(),
     val vedtakFattetTidspunkt: LocalDateTime,
     val vedtaksUtfallTilArbeidsgiver: VedtaksUtfall,

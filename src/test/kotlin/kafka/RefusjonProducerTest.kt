@@ -33,8 +33,13 @@ class RefusjonProducerTest :
                 tom = LocalDate.of(2026, 8, 3),
                 sykepengegrunnlag = 154999.92,
                 utfallTilArbeidsgiver = Utfall.INNVILGELSE,
-                fattetTidspunkt = LocalDateTime.of(2026, 8, 5, 13, 3, 25),
-                journalpostId = "123456789",
+                arbeidstakervedtakFattetTidspunkt = LocalDateTime.of(2026, 8, 5, 13, 3, 25),
+                sykmeldtNavn = "Ola Nordmann",
+                arbeidsgiverNavn = "Billys Bollefabrikk AS",
+                daggrupper = emptyList(),
+                beloepForventetRefusjon = 0,
+                beloepUtbetaltTilArbeidsgiver = 0,
+                dagerIgjenMedRettTilSykepenger = 101,
                 arbeidstakerVedtakMelding = arbeidstakerVedtakMeldingMock(fnr, orgnr),
             )
 

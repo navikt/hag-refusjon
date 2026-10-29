@@ -20,12 +20,19 @@ data class RefusjonUtfall(
     val orgnr: Orgnr,
     val fom: LocalDate,
     val tom: LocalDate,
+    // Fra vedtaket i sis, uendret.
     val sykepengegrunnlag: Double,
+    @Deprecated("Er alltid INNVILGELSE og skal fjernes. Beholdes fordi lps-api krever feltet.")
     val utfallTilArbeidsgiver: Utfall,
-    val fattetTidspunkt: LocalDateTime,
-    val journalpostId: String,
-    val sykmeldtNavn: String? = null,
-    val arbeidsgiverNavn: String? = null,
+    val arbeidstakervedtakFattetTidspunkt: LocalDateTime,
+    val sykmeldtNavn: String,
+    val arbeidsgiverNavn: String,
+    val daggrupper: List<Daggruppe>,
+    // Summen av beloepForventetRefusjon i daggruppene. Begrenset til 6G og justert for sykdomsgrad.
+    val beloepForventetRefusjon: Int,
+    // Summen av beloepUtbetaltTilArbeidsgiver i daggruppene. Beregnet av Spleis, som begrenser til 6G og justerer for sykdomsgrad.
+    val beloepUtbetaltTilArbeidsgiver: Int,
+    val dagerIgjenMedRettTilSykepenger: Int,
     val arbeidstakerVedtakMelding: ArbeidstakerVedtakMelding,
 )
 
@@ -35,30 +42,3 @@ enum class Utfall {
     DELVIS_INNVILGELSE,
     INNVILGELSE,
 }
-
-fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
-    refusjonsutfallId: Uuid,
-    arbeidsgiverNavn: String,
-    sykmeldtNavn: String,
-    journalpostId: String,
-): RefusjonUtfall =
-    RefusjonUtfall(
-        refusjonUtfallId = refusjonsutfallId,
-        vedtaksperiodeId = vedtaksperiodeId,
-        fnr = foedselsnummer,
-        orgnr = organisasjonsnummer,
-        fom = fom,
-        tom = tom,
-        sykepengegrunnlag = sykepengegrunnlag,
-        utfallTilArbeidsgiver =
-            when (vedtaksUtfallTilArbeidsgiver) {
-                VedtaksUtfall.AVSLAG -> Utfall.AVSLAG
-                VedtaksUtfall.DELVIS_INNVILGELSE -> Utfall.DELVIS_INNVILGELSE
-                VedtaksUtfall.INNVILGELSE -> Utfall.INNVILGELSE
-            },
-        fattetTidspunkt = vedtakFattetTidspunkt,
-        journalpostId = journalpostId,
-        sykmeldtNavn = sykmeldtNavn,
-        arbeidsgiverNavn = arbeidsgiverNavn,
-        arbeidstakerVedtakMelding = this,
-    )

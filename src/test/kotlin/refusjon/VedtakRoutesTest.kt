@@ -103,6 +103,9 @@ class VedtakRoutesTest :
                 bucketStorage.pdfer[refusjonsutfallId] shouldBe pdfBytes
 
                 coVerify(exactly = 1) { arkivService.arkiver(any(), refusjonsutfallId!!, ARBEIDSGIVER_NAVN, pdfBytes) }
+                coVerify(exactly = 1) {
+                    refusjonskravService.hentRefusjonskrav(listOf(Uuid.parse("65f84fa6-554e-4200-9466-30fc7e1ffb2e")))
+                }
 
                 val sendt = mockProducer.history()
                 sendt shouldHaveSize 1
@@ -121,10 +124,25 @@ class VedtakRoutesTest :
                         tom = LocalDate.of(2026, 8, 3),
                         sykepengegrunnlag = 154999.92,
                         utfallTilArbeidsgiver = Utfall.INNVILGELSE,
-                        fattetTidspunkt = LocalDateTime.parse("2026-08-05T13:03:25.166498222"),
-                        journalpostId = JOURNALPOST_ID,
+                        arbeidstakervedtakFattetTidspunkt = LocalDateTime.parse("2026-08-05T13:03:25.166498222"),
                         arbeidsgiverNavn = ARBEIDSGIVER_NAVN,
                         sykmeldtNavn = SYKMELDT_NAVN,
+                        daggrupper =
+                            listOf(
+                                Daggruppe(
+                                    antallDager = 1,
+                                    sykepengeStatus = SykepengeStatus.RETT_TIL_SYKEPENGER,
+                                    sykdomsgrad = 100,
+                                    beloepKrevdRefusjonPerDag = 1431,
+                                    beloepKrevdRefusjonPerMaaned = null,
+                                    beloepForventetRefusjon = 1431,
+                                    beloepUtbetaltTilArbeidsgiver = 1431,
+                                    begrensetTilSeksG = false,
+                                ),
+                            ),
+                        beloepForventetRefusjon = 1431,
+                        beloepUtbetaltTilArbeidsgiver = 1431,
+                        dagerIgjenMedRettTilSykepenger = DAGER_IGJEN_MED_RETT_TIL_SYKEPENGER,
                         arbeidstakerVedtakMelding =
                             gyldigMelding(FNR, ORGNR)
                                 .parseJson()
@@ -588,6 +606,7 @@ private fun gyldigMelding(
         }
       ],
       "sykepengegrunnlag": 154999.92,
+      "anvendtSeksG": 819294.0,
       "utbetalingsdager": [
         {
           "dato": "2026-07-28",

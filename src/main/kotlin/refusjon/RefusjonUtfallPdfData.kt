@@ -2,7 +2,6 @@
 
 package no.nav.helsearbeidsgiver.refusjon
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateSerializer
@@ -13,56 +12,35 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.uuid.Uuid
 
-// Datagrunnlag for refusjon-malen i helsearbeidsgiver-pdfgen. Feltnavn og @SerialName må synkroniseres med malen.
+// Datagrunnlag for refusjon-malen i helsearbeidsgiver-pdfgen. Feltnavnene må synkroniseres med malen.
 @Serializable
 data class RefusjonUtfallPdfData(
-    @SerialName("fødselsnummer") val foedselsnummer: Fnr,
+    val refusjonUtfallId: Uuid,
+    val fnr: Fnr,
     val sykmeldtNavn: String,
-    val yrkesaktivitetstype: Yrkesaktivitetstype,
-    val organisasjonsnummer: Orgnr,
+    val orgnr: Orgnr,
     val arbeidsgiverNavn: String,
-    val vedtaksperiodeId: Uuid,
     val fom: LocalDate,
     val tom: LocalDate,
-    @SerialName("skjæringstidspunkt") val skjaeringstidspunkt: LocalDate,
-    val sykepengegrunnlag: Double,
-    val utbetalingsdager: List<Utbetalingsdag>,
-    val utbetaltTilArbeidsgiver: Int,
-    val vedtakFattetTidspunkt: LocalDateTime,
-    val vedtaksUtfallTilArbeidsgiver: VedtaksUtfall,
-    val saksbehandlerIdent: String?,
-    val saksbehandlerNavn: String?,
-    val beslutterIdent: String?,
-    val beslutterNavn: String?,
-    val automatiskFattet: Boolean,
-    @SerialName("harArbeidsgiverØnsketRefusjon") val harArbeidsgiverOensketRefusjon: Boolean,
+    val daggrupper: List<Daggruppe>,
+    val beloepForventetRefusjon: Int,
+    val beloepUtbetaltTilArbeidsgiver: Int,
+    val dagerIgjenMedRettTilSykepenger: Int,
+    val arbeidstakervedtakFattetTidspunkt: LocalDateTime,
 )
 
-fun ArbeidstakerVedtakMelding.tilRefusjonUtfallPdfData(
-    arbeidsgiverNavn: String,
-    sykmeldtNavn: String,
-): RefusjonUtfallPdfData =
+fun RefusjonUtfall.tilRefusjonUtfallPdfData(): RefusjonUtfallPdfData =
     RefusjonUtfallPdfData(
-        foedselsnummer = foedselsnummer,
+        refusjonUtfallId = refusjonUtfallId,
+        fnr = fnr,
         sykmeldtNavn = sykmeldtNavn,
-        yrkesaktivitetstype = yrkesaktivitetstype,
-        organisasjonsnummer = organisasjonsnummer,
+        orgnr = orgnr,
         arbeidsgiverNavn = arbeidsgiverNavn,
-        vedtaksperiodeId = vedtaksperiodeId,
         fom = fom,
         tom = tom,
-        skjaeringstidspunkt = skjaeringstidspunkt,
-        sykepengegrunnlag = sykepengegrunnlag,
-        utbetalingsdager = utbetalingsdager,
-        utbetaltTilArbeidsgiver = utbetalingsdager.summerBeloepTilArbeidsgiver(),
-        vedtakFattetTidspunkt = vedtakFattetTidspunkt,
-        vedtaksUtfallTilArbeidsgiver = vedtaksUtfallTilArbeidsgiver,
-        saksbehandlerIdent = saksbehandlerIdent,
-        saksbehandlerNavn = saksbehandlerNavn,
-        beslutterIdent = beslutterIdent,
-        beslutterNavn = beslutterNavn,
-        automatiskFattet = automatiskFattet,
-        harArbeidsgiverOensketRefusjon = harArbeidsgiverOensketRefusjon,
+        daggrupper = daggrupper,
+        beloepForventetRefusjon = beloepForventetRefusjon,
+        beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
+        dagerIgjenMedRettTilSykepenger = dagerIgjenMedRettTilSykepenger,
+        arbeidstakervedtakFattetTidspunkt = arbeidstakervedtakFattetTidspunkt,
     )
-
-private fun List<Utbetalingsdag>.summerBeloepTilArbeidsgiver(): Int = sumOf { it.beloepTilArbeidsgiver }
