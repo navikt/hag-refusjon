@@ -91,7 +91,7 @@ class RefusjonUtfallMapperTest :
                         beloepKrevdRefusjonPerMaaned = null,
                         beloepForventetRefusjon = 2000,
                         beloepUtbetaltTilArbeidsgiver = 2000,
-                        begrensetTil6G = false,
+                        begrensetTilSeksG = false,
                     ),
                 )
         }
@@ -108,7 +108,7 @@ class RefusjonUtfallMapperTest :
                 .tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
                 .daggrupper
                 .single()
-                .begrensetTil6G shouldBe true
+                .begrensetTilSeksG shouldBe true
         }
 
         test("henter distinkte inntektsmeldingreferanser fra utbetalingsdagene") {

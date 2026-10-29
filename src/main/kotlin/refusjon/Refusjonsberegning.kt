@@ -17,22 +17,22 @@ fun refusjonskravPerAar(
     refusjonskravPerMaaned?.toBigDecimal()?.multiply(MAANEDER_PER_AAR)
         ?: refusjonskravPerDag.toBigDecimal().multiply(VIRKEDAGER_PER_AAR)
 
-fun erBegrensetTil6G(
+fun erBegrensetTilSeksG(
     refusjonskravPerAar: BigDecimal,
-    anvendt6G: BigDecimal,
-): Boolean = refusjonskravPerAar > anvendt6G
+    anvendtSeksG: BigDecimal,
+): Boolean = refusjonskravPerAar > anvendtSeksG
 
 fun forventetRefusjonPerDag(
     refusjonskravPerAar: BigDecimal,
-    anvendt6G: BigDecimal,
+    anvendtSeksG: BigDecimal,
     sykdomsgrad: Int,
 ): BigDecimal {
     require(refusjonskravPerAar.signum() >= 0)
-    require(anvendt6G.signum() > 0)
+    require(anvendtSeksG.signum() > 0)
     require(sykdomsgrad in 0..100)
 
     return refusjonskravPerAar
-        .min(anvendt6G)
+        .min(anvendtSeksG)
         .multiply(sykdomsgrad.toBigDecimal())
         .divide(VIRKEDAGER_PER_AAR * HUNDRE_PROSENT, MathContext.DECIMAL128)
 }

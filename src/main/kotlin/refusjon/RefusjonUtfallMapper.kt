@@ -15,7 +15,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
     arbeidsgiverNavn: String,
     sykmeldtNavn: String,
 ): RefusjonUtfall {
-    val daggrupper = tilDager(refusjonskrav).tilDaggrupper(anvendt6G = anvendtSeksG.toBigDecimal())
+    val daggrupper = tilDager(refusjonskrav).tilDaggrupper(anvendtSeksG = anvendtSeksG.toBigDecimal())
 
     return RefusjonUtfall(
         refusjonUtfallId = refusjonUtfallId,

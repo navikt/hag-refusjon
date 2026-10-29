@@ -137,7 +137,7 @@ class VedtakRoutesTest :
                                     beloepKrevdRefusjonPerMaaned = null,
                                     beloepForventetRefusjon = 1431,
                                     beloepUtbetaltTilArbeidsgiver = 1431,
-                                    begrensetTil6G = false,
+                                    begrensetTilSeksG = false,
                                 ),
                             ),
                         beloepForventetRefusjon = 1431,

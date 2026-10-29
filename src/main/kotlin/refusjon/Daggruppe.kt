@@ -16,7 +16,7 @@ data class Daggruppe(
     val beloepKrevdRefusjonPerMaaned: Double?,
     // Summen av beløp til arbeidsgiver fra sis for dagene i gruppen. Beregnet av Spleis, som begrenser til 6G og justerer for sykdomsgrad.
     val beloepUtbetaltTilArbeidsgiver: Int,
-    val begrensetTil6G: Boolean,
+    val begrensetTilSeksG: Boolean,
 )
 
 @Serializable

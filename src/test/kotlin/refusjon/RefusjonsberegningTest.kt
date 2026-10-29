@@ -22,14 +22,14 @@ class RefusjonsberegningTest :
             }
         }
 
-        context("erBegrensetTil6G") {
+        context("erBegrensetTilSeksG") {
             withData(
                 nameFn = { (krav, forventet) -> "refusjonskrav $krav gir $forventet" },
                 "819295" to true,
                 "819294" to false,
                 "819293.99" to false,
             ) { (krav, forventet) ->
-                erBegrensetTil6G(BigDecimal(krav), ANVENDT_6G) shouldBe forventet
+                erBegrensetTilSeksG(BigDecimal(krav), ANVENDT_6G) shouldBe forventet
             }
         }
 

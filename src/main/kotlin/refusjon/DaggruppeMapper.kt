@@ -4,9 +4,9 @@ import java.math.BigDecimal
 
 // Påfølgende dager med lik status, sykdomsgrad, refusjonskrav og 6G-begrensning slås sammen til én daggruppe.
 // Dager som er filtrert bort (f.eks. helg) bryter ikke en daggruppe.
-fun List<Dag>.tilDaggrupper(anvendt6G: BigDecimal): List<Daggruppe> =
+fun List<Dag>.tilDaggrupper(anvendtSeksG: BigDecimal): List<Daggruppe> =
     sortedBy { it.dato }
-        .mapNotNull { it.tilDaggruppe(anvendt6G) }
+        .mapNotNull { it.tilDaggruppe(anvendtSeksG) }
         .fold(emptyList()) { daggrupper, neste ->
             val forrige = daggrupper.lastOrNull()
             if (forrige != null && forrige.kanSlaasSammenMed(neste)) {
@@ -16,10 +16,10 @@ fun List<Dag>.tilDaggrupper(anvendt6G: BigDecimal): List<Daggruppe> =
             }
         }
 
-private fun Dag.tilDaggruppe(anvendt6G: BigDecimal): Daggruppe? {
+private fun Dag.tilDaggruppe(anvendtSeksG: BigDecimal): Daggruppe? {
     val refusjonskravPerAar =
         refusjonskravPerAar(beloepKrevdRefusjonPerMaaned, beloepKrevdRefusjonPerDag)
-    val forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar, anvendt6G, sykdomsgrad)
+    val forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar, anvendtSeksG, sykdomsgrad)
     val sykepengeStatus = tilSykepengeStatus(forventetRefusjon)
 
     // Dager utenfor daggruppene skal ikke ha utbetaling til arbeidsgiver
@@ -38,8 +38,8 @@ private fun Dag.tilDaggruppe(anvendt6G: BigDecimal): Daggruppe? {
         beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
         beloepForventetRefusjon = forventetRefusjon.tilHeleKroner(),
         beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
-        begrensetTil6G =
-            sykepengeStatus != SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER && erBegrensetTil6G(refusjonskravPerAar, anvendt6G),
+        begrensetTilSeksG =
+            sykepengeStatus != SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER && erBegrensetTilSeksG(refusjonskravPerAar, anvendtSeksG),
     )
 }
 
@@ -74,7 +74,7 @@ private fun Daggruppe.kanSlaasSammenMed(neste: Daggruppe): Boolean =
         sykdomsgrad == neste.sykdomsgrad &&
         beloepKrevdRefusjonPerDag == neste.beloepKrevdRefusjonPerDag &&
         beloepKrevdRefusjonPerMaaned == neste.beloepKrevdRefusjonPerMaaned &&
-        begrensetTil6G == neste.begrensetTil6G
+        begrensetTilSeksG == neste.begrensetTilSeksG
 
 private fun Daggruppe.slaaSammenMed(neste: Daggruppe): Daggruppe =
     copy(

@@ -110,10 +110,10 @@ class DaggruppeMapperTest :
             }
 
             test("forventet refusjon begrenses til 6G") {
-                fun dagOver6G(dato: LocalDate) =
+                fun dagOverSeksG(dato: LocalDate) =
                     dag(dato, beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED, beloepUtbetaltTilArbeidsgiver = DAGSATS_6G)
 
-                daggrupper(dagOver6G(august(3)), dagOver6G(august(4))).single().beloepForventetRefusjon shouldBe 2 * DAGSATS_6G
+                daggrupper(dagOverSeksG(august(3)), dagOverSeksG(august(4))).single().beloepForventetRefusjon shouldBe 2 * DAGSATS_6G
             }
 
             context("starter ny daggruppe når") {
@@ -210,28 +210,28 @@ class DaggruppeMapperTest :
                         status = SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER,
                         beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED,
                         beloepForventetRefusjon = DAGSATS_6G,
-                        begrensetTil6G = false,
+                        begrensetTilSeksG = false,
                     )
             }
         }
 
-        context("begrensetTil6G") {
-            fun dagOver6G(utbetalt: Int) =
+        context("begrensetTilSeksG") {
+            fun dagOverSeksG(utbetalt: Int) =
                 dag(august(3), beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED, beloepUtbetaltTilArbeidsgiver = utbetalt)
 
             test("refusjonskrav over 6G er begrenset, og utbetalt 6G-dagsats gir ikke differanse") {
-                daggrupper(dagOver6G(utbetalt = DAGSATS_6G)).single() shouldBe
+                daggrupper(dagOverSeksG(utbetalt = DAGSATS_6G)).single() shouldBe
                     daggruppe(
                         antallDager = 1,
                         beloepUtbetaltTilArbeidsgiver = DAGSATS_6G,
                         beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED,
                         beloepForventetRefusjon = DAGSATS_6G,
-                        begrensetTil6G = true,
+                        begrensetTilSeksG = true,
                     )
             }
 
             test("refusjonskrav over 6G gir differanse når utbetalingen avviker fra 6G-dagsatsen") {
-                daggrupper(dagOver6G(utbetalt = DAGSATS_6G - 2)).single().sykepengeStatus shouldBe
+                daggrupper(dagOverSeksG(utbetalt = DAGSATS_6G - 2)).single().sykepengeStatus shouldBe
                     SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE
             }
 
@@ -242,11 +242,11 @@ class DaggruppeMapperTest :
                         beloepKrevdRefusjonPerMaaned = ANVENDT_6G.toDouble() / MAANEDER_PER_AAR,
                         beloepUtbetaltTilArbeidsgiver = DAGSATS_6G,
                     ),
-                ).single().begrensetTil6G shouldBe false
+                ).single().begrensetTilSeksG shouldBe false
             }
 
             test("refusjonskrav under 6G er ikke begrenset") {
-                daggrupper(dag(august(3))).single().begrensetTil6G shouldBe false
+                daggrupper(dag(august(3))).single().begrensetTilSeksG shouldBe false
             }
         }
     })
@@ -278,7 +278,7 @@ private fun daggruppe(
     beloepKrevdRefusjonPerDag: Int = DAGSATS,
     beloepKrevdRefusjonPerMaaned: Double? = REFUSJONSKRAV_PER_MAANED,
     beloepForventetRefusjon: Int = antallDager * DAGSATS * sykdomsgrad / 100,
-    begrensetTil6G: Boolean = false,
+    begrensetTilSeksG: Boolean = false,
 ): Daggruppe =
     Daggruppe(
         antallDager = antallDager,
@@ -288,7 +288,7 @@ private fun daggruppe(
         beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
         beloepForventetRefusjon = beloepForventetRefusjon,
         beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
-        begrensetTil6G = begrensetTil6G,
+        begrensetTilSeksG = begrensetTilSeksG,
     )
 
 private fun daggrupper(vararg dager: Dag): List<Daggruppe> = dager.toList().tilDaggrupper(ANVENDT_6G)
