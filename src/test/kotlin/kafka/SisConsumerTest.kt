@@ -58,12 +58,12 @@ class SisConsumerTest :
 
         fun db() = checkNotNull(databaseConfig).database
 
-        fun rader() =
+        fun arbeidstakerVedtakFraDatabase() =
             transaction(db()) {
                 ArbeidstakerVedtakEntitet.selectAll().toList()
             }
 
-        fun jobber() =
+        fun bakgrunnsjobber() =
             transaction(db()) {
                 val resultat = mutableListOf<Triple<String, Int, String>>()
                 exec("SELECT type, maks_forsoek, data::text FROM bakgrunnsjobb") { rs ->
@@ -182,8 +182,8 @@ class SisConsumerTest :
 
             sisConsumer(kafka).poll()
 
-            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
-            val jobb = jobber().single()
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            val jobb = bakgrunnsjobber().single()
             jobb.first shouldBe JOB_TYPE
             jobb.second shouldBe 10
             jobbData(jobb) shouldBe vedtak
@@ -201,8 +201,8 @@ class SisConsumerTest :
 
             sisConsumer(kafka).poll()
 
-            rader() shouldHaveSize 0
-            jobber() shouldHaveSize 0
+            arbeidstakerVedtakFraDatabase() shouldHaveSize 0
+            bakgrunnsjobber() shouldHaveSize 0
             kafka.committed(setOf(partition))[partition]?.offset() shouldBe 3L
             kafka.close()
         }
@@ -213,7 +213,7 @@ class SisConsumerTest :
 
             sisConsumer(kafka).poll()
 
-            jobber() shouldHaveSize 0
+            bakgrunnsjobber() shouldHaveSize 0
             kafka.committed(setOf(partition))[partition]?.offset() shouldBe 1L
             kafka.close()
         }
@@ -224,8 +224,8 @@ class SisConsumerTest :
 
             sisConsumer(kafka).poll()
 
-            jobber().map { jobbData(it).behandlingId }.toSet() shouldBe setOf(vedtak.behandlingId, andreVedtak.behandlingId)
-            jobber() shouldHaveSize 2
+            bakgrunnsjobber().map { jobbData(it).behandlingId }.toSet() shouldBe setOf(vedtak.behandlingId, andreVedtak.behandlingId)
+            bakgrunnsjobber() shouldHaveSize 2
             kafka.close()
         }
 
@@ -236,8 +236,8 @@ class SisConsumerTest :
                 sisConsumer(kafka).poll()
             }
 
-            rader() shouldHaveSize 0
-            jobber() shouldHaveSize 0
+            arbeidstakerVedtakFraDatabase() shouldHaveSize 0
+            bakgrunnsjobber() shouldHaveSize 0
             kafka.committed(setOf(partition))[partition] shouldBe null
             kafka.close()
         }
@@ -248,15 +248,15 @@ class SisConsumerTest :
                 sisConsumer(foerste).poll()
             }
             foerste.committed(setOf(partition))[partition] shouldBe null
-            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
             foerste.close()
 
             val replay = kafka(vedtakJson(), "ikke json")
             shouldThrow<SerializationException> {
                 sisConsumer(replay).poll()
             }
-            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
-            jobber() shouldHaveSize 1
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            bakgrunnsjobber() shouldHaveSize 1
             replay.committed(setOf(partition))[partition] shouldBe null
             replay.close()
         }
@@ -271,15 +271,15 @@ class SisConsumerTest :
                 sisConsumer(foerste, feilendeRepository).poll()
             }
             foerste.committed(setOf(partition))[partition] shouldBe null
-            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
             foerste.close()
 
             val replay = kafka(vedtakJson(), vedtakJson(andreVedtak))
             sisConsumer(replay).poll()
 
-            rader().map { it[ArbeidstakerVedtakEntitet.behandlingId] }.toSet() shouldBe
+            arbeidstakerVedtakFraDatabase().map { it[ArbeidstakerVedtakEntitet.behandlingId] }.toSet() shouldBe
                 setOf(vedtak.behandlingId, andreVedtak.behandlingId)
-            jobber() shouldHaveSize 2
+            bakgrunnsjobber() shouldHaveSize 2
             replay.committed(setOf(partition))[partition]?.offset() shouldBe 2L
             replay.close()
         }
@@ -291,8 +291,8 @@ class SisConsumerTest :
                 sisConsumer(kafka, service = feilendeBakgrunnsjobbService()).poll()
             }
 
-            rader() shouldHaveSize 0
-            jobber() shouldHaveSize 0
+            arbeidstakerVedtakFraDatabase() shouldHaveSize 0
+            bakgrunnsjobber() shouldHaveSize 0
             kafka.committed(setOf(partition))[partition] shouldBe null
             kafka.close()
         }
@@ -307,8 +307,8 @@ class SisConsumerTest :
             val replay = kafka(vedtakJson())
             sisConsumer(replay).poll()
 
-            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
-            jobbData(jobber().single()) shouldBe vedtak
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            jobbData(bakgrunnsjobber().single()) shouldBe vedtak
             replay.committed(setOf(partition))[partition]?.offset() shouldBe 1L
             replay.close()
         }
@@ -321,14 +321,14 @@ class SisConsumerTest :
                 sisConsumer(foerste).poll()
             }
             foerste.committed(setOf(partition))[partition] shouldBe null
-            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
             foerste.close()
 
             val replay = kafka(vedtakJson())
             sisConsumer(replay).poll()
 
-            rader().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
-            jobber() shouldHaveSize 1
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            bakgrunnsjobber() shouldHaveSize 1
             replay.committed(setOf(partition))[partition]?.offset() shouldBe 1L
             replay.close()
         }
