@@ -10,12 +10,15 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
+import no.nav.hag.utils.bakgrunnsjobb.BakgrunnsjobbService
+import no.nav.hag.utils.bakgrunnsjobb.exposed.ExposedBakgrunnsjobRepository
 import no.nav.helsearbeidsgiver.Env.getPropertyOrNull
 import no.nav.helsearbeidsgiver.Env.isDev
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.auth.TexasTokenValidator
 import no.nav.helsearbeidsgiver.auth.TokenPrincipal
 import no.nav.helsearbeidsgiver.auth.TokenValidator
+import no.nav.helsearbeidsgiver.bakgrunnsjobb.ArbeidstakerVedtakJobb
 import no.nav.helsearbeidsgiver.brreg.BrregClient
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
@@ -87,6 +90,11 @@ fun main() {
                     .orDefault { throw RuntimeException("NAIS_TOKEN_INTROSPECTION_ENDPOINT ikke satt") },
         )
     DatabaseConfig().use { database ->
+
+        val bakgrunnsjobbService = BakgrunnsjobbService(ExposedBakgrunnsjobRepository(database.database))
+        bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb())
+        bakgrunnsjobbService.startAsync(retryOnFail = true)
+
         val refusjonskravService =
             RefusjonskravService(
                 url = getPropertyOrNull("REFUSJONSKRAV_URL").orDefault { throw RuntimeException("REFUSJONSKRAV_URL ikke satt") },
@@ -97,6 +105,7 @@ fun main() {
                     ).orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
                 repository = RefusjonskravRepository(database.database),
             )
+
         val sisConsumer =
             SisConsumer(
                 consumer =
@@ -111,8 +120,11 @@ fun main() {
                     ),
                 topic = getPropertyOrNull("KAFKA_TOPIC_SIS").orDefault { throw RuntimeException("KAFKA_TOPIC_SIS ikke satt") },
                 tolker = SisTolker(),
-                repository = ArbeidstakerVedtakRepository(database.database),
+                arbeidstakerVedtakRepository = ArbeidstakerVedtakRepository(database.database),
+                bakgrunnsjobbService = bakgrunnsjobbService,
+                db = database.database,
             )
+
         embeddedServer(
             factory = Netty,
             port = 8080,
