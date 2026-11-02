@@ -2,10 +2,10 @@ package no.nav.helsearbeidsgiver.kafka
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
+import io.mockk.spyk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
@@ -13,6 +13,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import kotlinx.serialization.SerializationException
+import no.nav.hag.utils.bakgrunnsjobb.BakgrunnsjobbService
+import no.nav.hag.utils.bakgrunnsjobb.exposed.ExposedBakgrunnsjobRepository
+import no.nav.helsearbeidsgiver.bakgrunnsjobb.ArbeidstakerVedtakJobb
+import no.nav.helsearbeidsgiver.bakgrunnsjobb.JOB_TYPE
+import no.nav.helsearbeidsgiver.db.DatabaseConfig
+import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakEntitet
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
 import no.nav.helsearbeidsgiver.refusjon.Avsender
@@ -20,6 +26,7 @@ import no.nav.helsearbeidsgiver.refusjon.Utbetalingsdagtype
 import no.nav.helsearbeidsgiver.refusjon.Yrkesaktivitetstype
 import no.nav.helsearbeidsgiver.refusjon.arbeidstakerVedtakMeldingMock
 import no.nav.helsearbeidsgiver.refusjon.utbetalingsdagMock
+import no.nav.helsearbeidsgiver.utils.json.fromJson
 import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
@@ -27,20 +34,91 @@ import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import org.apache.kafka.clients.consumer.CommitFailedException
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.MockConsumer
-import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.TopicPartition
-import java.time.LocalDate
+import org.jetbrains.exposed.v1.jdbc.deleteAll
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.testcontainers.containers.PostgreSQLContainer
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
+import kotlin.uuid.toKotlinUuid
 
 class SisConsumerTest :
     FunSpec({
+        val postgres = PostgreSQLContainer<Nothing>("postgres:18-alpine")
+        var databaseConfig: DatabaseConfig? = null
+        lateinit var repository: ArbeidstakerVedtakRepository
+        lateinit var bakgrunnsjobbService: BakgrunnsjobbService
         val topic = "tbd.sis"
-        val tolker = SisTolker()
+        val partition = TopicPartition(topic, 0)
         val vedtak = arbeidstakerVedtakMeldingMock(Fnr.genererGyldig(), Orgnr.genererGyldig())
+        val tolker = SisTolker()
+
+        fun db() = checkNotNull(databaseConfig).database
+
+        fun arbeidstakerVedtakFraDatabase() =
+            transaction(db()) {
+                ArbeidstakerVedtakEntitet.selectAll().toList()
+            }
+
+        fun bakgrunnsjobber() =
+            transaction(db()) {
+                val resultat = mutableListOf<Triple<String, Int, String>>()
+                exec("SELECT type, maks_forsoek, data::text FROM bakgrunnsjobb") { rs ->
+                    while (rs.next()) resultat.add(Triple(rs.getString(1), rs.getInt(2), rs.getString(3)))
+                }
+                resultat
+            }
+
+        fun jobbData(jobb: Triple<String, Int, String>) = jobb.third.fromJson(ArbeidstakerVedtakMelding.serializer())
+
+        fun nyBehandling() = vedtak.copy(behandlingId = UUID.randomUUID().toKotlinUuid())
+
+        fun sisConsumer(
+            kafka: MockConsumer<String, String>,
+            vedtakRepository: ArbeidstakerVedtakRepository = repository,
+            service: BakgrunnsjobbService = bakgrunnsjobbService,
+        ) = SisConsumer(kafka, topic, tolker, vedtakRepository, service, db())
+
+        fun feilendeBakgrunnsjobbService(): BakgrunnsjobbService {
+            val service = BakgrunnsjobbService(spyk(ExposedBakgrunnsjobRepository(db())))
+            service.registrer(ArbeidstakerVedtakJobb())
+            every { service.bakgrunnsjobbRepository.save(any()) } throws IllegalStateException("Kunne ikke lagre bakgrunnsjobb")
+            return service
+        }
 
         fun vedtakJson(melding: ArbeidstakerVedtakMelding = vedtak) = melding.toJson(ArbeidstakerVedtakMelding.serializer()).toString()
+
+        fun kafka(vararg values: String?): MockConsumer<String, String> =
+            MockConsumer<String, String>("earliest").apply {
+                assign(listOf(partition))
+                updateBeginningOffsets(mapOf(partition to 0L))
+                values.forEachIndexed { index, value ->
+                    addRecord(ConsumerRecord(topic, 0, index.toLong(), "key", value))
+                }
+            }
+
+        beforeSpec {
+            postgres.start()
+            databaseConfig = DatabaseConfig(postgres.jdbcUrl, postgres.username, postgres.password)
+            repository = ArbeidstakerVedtakRepository(db())
+            bakgrunnsjobbService = BakgrunnsjobbService(ExposedBakgrunnsjobRepository(db()))
+            bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb())
+        }
+
+        beforeTest {
+            transaction(db()) {
+                ArbeidstakerVedtakEntitet.deleteAll()
+                exec("DELETE FROM bakgrunnsjobb")
+            }
+        }
+
+        afterSpec {
+            databaseConfig?.close()
+            postgres.stop()
+        }
 
         test("leser vedtak for arbeidstakere") {
             tolker.lesMelding(vedtakJson()) shouldBe vedtak
@@ -99,86 +177,172 @@ class SisConsumerTest :
             shouldThrow<SerializationException> { tolker.lesMelding(json) }
         }
 
-        val partition = TopicPartition(topic, 0)
+        test("lagrer vedtak og oppretter bakgrunnsjobb før offset bekreftes") {
+            val kafka = kafka(vedtakJson())
 
-        fun mockConsumer(vararg values: String?): MockConsumer<String, String> =
-            MockConsumer<String, String>("earliest").apply {
-                assign(listOf(partition))
-                updateBeginningOffsets(mapOf(partition to 0L))
-                values.forEachIndexed { index, value ->
-                    addRecord(ConsumerRecord(topic, 0, index.toLong(), "key", value))
-                }
-            }
+            sisConsumer(kafka).poll()
 
-        test("lagrer vedtak før offset bekreftes") {
-            val kafka = mockConsumer(vedtakJson())
-            val repository = mockk<ArbeidstakerVedtakRepository>()
-            every { repository.lagre(vedtak) } answers {
-                kafka.committed(setOf(partition))[partition] shouldBe null
-                true
-            }
-
-            SisConsumer(kafka, topic, tolker, repository).poll()
-
-            verify(exactly = 1) { repository.lagre(vedtak) }
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            val jobb = bakgrunnsjobber().single()
+            jobb.first shouldBe JOB_TYPE
+            jobb.second shouldBe 10
+            jobbData(jobb) shouldBe vedtak
             kafka.committed(setOf(partition))[partition]?.offset() shouldBe 1L
             kafka.close()
         }
 
         test("hopper over irrelevante meldinger og nullverdier") {
             val kafka =
-                mockConsumer(
+                kafka(
                     """{"status":"OPPRETTET"}""",
                     vedtakJson(vedtak.copy(yrkesaktivitetstype = Yrkesaktivitetstype.FRILANS)),
                     null,
                 )
-            val repository = mockk<ArbeidstakerVedtakRepository>()
 
-            SisConsumer(kafka, topic, tolker, repository).poll()
+            sisConsumer(kafka).poll()
 
-            verify(exactly = 0) { repository.lagre(any()) }
+            arbeidstakerVedtakFraDatabase() shouldHaveSize 0
+            bakgrunnsjobber() shouldHaveSize 0
             kafka.committed(setOf(partition))[partition]?.offset() shouldBe 3L
             kafka.close()
         }
 
+        test("oppretter ikke bakgrunnsjobb for duplikat, men bekrefter offset") {
+            repository.lagre(vedtak) shouldBe true
+            val kafka = kafka(vedtakJson())
+
+            sisConsumer(kafka).poll()
+
+            bakgrunnsjobber() shouldHaveSize 0
+            kafka.committed(setOf(partition))[partition]?.offset() shouldBe 1L
+            kafka.close()
+        }
+
+        test("oppretter én bakgrunnsjobb per nye vedtak, og ingen for duplikater") {
+            val andreVedtak = nyBehandling()
+            val kafka = kafka(vedtakJson(), vedtakJson(andreVedtak), vedtakJson())
+
+            sisConsumer(kafka).poll()
+
+            bakgrunnsjobber().map { jobbData(it).behandlingId }.toSet() shouldBe setOf(vedtak.behandlingId, andreVedtak.behandlingId)
+            bakgrunnsjobber() shouldHaveSize 2
+            kafka.close()
+        }
+
         test("stopper ved ugyldig JSON uten å bekrefte offset") {
-            val kafka = mockConsumer("ikke json", vedtakJson())
-            val repository = mockk<ArbeidstakerVedtakRepository>()
+            val kafka = kafka("ikke json", vedtakJson())
 
             shouldThrow<SerializationException> {
-                SisConsumer(kafka, topic, tolker, repository).poll()
+                sisConsumer(kafka).poll()
             }
 
-            verify(exactly = 0) { repository.lagre(any()) }
+            arbeidstakerVedtakFraDatabase() shouldHaveSize 0
+            bakgrunnsjobber() shouldHaveSize 0
             kafka.committed(setOf(partition))[partition] shouldBe null
             kafka.close()
         }
 
-        test("stopper ved databasefeil uten å bekrefte offset") {
-            val kafka = mockConsumer(vedtakJson(), vedtakJson())
-            val repository = mockk<ArbeidstakerVedtakRepository>()
-            val failure = IllegalStateException("Databasen er utilgjengelig")
-            every { repository.lagre(any()) } throws failure
+        test("oppretter ikke duplikater ved gjentatte forsøk på å behandle en ugyldig melding") {
+            val foerste = kafka(vedtakJson(), "ikke json")
+            shouldThrow<SerializationException> {
+                sisConsumer(foerste).poll()
+            }
+            foerste.committed(setOf(partition))[partition] shouldBe null
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            foerste.close()
+
+            val replay = kafka(vedtakJson(), "ikke json")
+            shouldThrow<SerializationException> {
+                sisConsumer(replay).poll()
+            }
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            bakgrunnsjobber() shouldHaveSize 1
+            replay.committed(setOf(partition))[partition] shouldBe null
+            replay.close()
+        }
+
+        test("beholder lagrede rader ved nytt forsøk etter databasefeil") {
+            val andreVedtak = nyBehandling()
+            val feilendeRepository = spyk(repository)
+            every { feilendeRepository.lagre(andreVedtak) } throws IllegalStateException("Databasefeil")
+            val foerste = kafka(vedtakJson(), vedtakJson(andreVedtak))
 
             shouldThrow<IllegalStateException> {
-                SisConsumer(kafka, topic, tolker, repository).poll()
-            } shouldBe failure
+                sisConsumer(foerste, feilendeRepository).poll()
+            }
+            foerste.committed(setOf(partition))[partition] shouldBe null
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            foerste.close()
 
-            verify(exactly = 1) { repository.lagre(any()) }
+            val replay = kafka(vedtakJson(), vedtakJson(andreVedtak))
+            sisConsumer(replay).poll()
+
+            arbeidstakerVedtakFraDatabase().map { it[ArbeidstakerVedtakEntitet.behandlingId] }.toSet() shouldBe
+                setOf(vedtak.behandlingId, andreVedtak.behandlingId)
+            bakgrunnsjobber() shouldHaveSize 2
+            replay.committed(setOf(partition))[partition]?.offset() shouldBe 2L
+            replay.close()
+        }
+
+        test("ruller tilbake vedtaket og bekrefter ikke offset når opprettelse av bakgrunnsjobb feiler") {
+            val kafka = kafka(vedtakJson())
+
+            shouldThrow<IllegalStateException> {
+                sisConsumer(kafka, service = feilendeBakgrunnsjobbService()).poll()
+            }
+
+            arbeidstakerVedtakFraDatabase() shouldHaveSize 0
+            bakgrunnsjobber() shouldHaveSize 0
             kafka.committed(setOf(partition))[partition] shouldBe null
             kafka.close()
+        }
+
+        test("oppretter bakgrunnsjobb ved ny levering etter at opprettelsen feilet") {
+            val foerste = kafka(vedtakJson())
+            shouldThrow<IllegalStateException> {
+                sisConsumer(foerste, service = feilendeBakgrunnsjobbService()).poll()
+            }
+            foerste.close()
+
+            val replay = kafka(vedtakJson())
+            sisConsumer(replay).poll()
+
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            jobbData(bakgrunnsjobber().single()) shouldBe vedtak
+            replay.committed(setOf(partition))[partition]?.offset() shouldBe 1L
+            replay.close()
+        }
+
+        test("beholder raden ved nytt forsøk etter feil ved bekreftelse av offset") {
+            val foerste = spyk(kafka(vedtakJson()))
+            every { foerste.commitSync() } throws CommitFailedException("Rebalansering")
+
+            shouldThrow<CommitFailedException> {
+                sisConsumer(foerste).poll()
+            }
+            foerste.committed(setOf(partition))[partition] shouldBe null
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            foerste.close()
+
+            val replay = kafka(vedtakJson())
+            sisConsumer(replay).poll()
+
+            arbeidstakerVedtakFraDatabase().single()[ArbeidstakerVedtakEntitet.behandlingId] shouldBe vedtak.behandlingId
+            bakgrunnsjobber() shouldHaveSize 1
+            replay.committed(setOf(partition))[partition]?.offset() shouldBe 1L
+            replay.close()
         }
 
         test("lukker Kafka-klienten når henting av meldinger feiler") {
-            val mockConsumer = MockConsumer<String, String>("earliest")
+            val kafka = MockConsumer<String, String>("earliest")
             val failure = KafkaException("Polling feilet")
-            mockConsumer.setPollException(failure)
+            kafka.setPollException(failure)
 
             shouldThrow<KafkaException> {
-                SisConsumer(mockConsumer, topic, tolker, mockk()).kjoer()
+                sisConsumer(kafka).kjoer()
             } shouldBe failure
 
-            mockConsumer.closed() shouldBe true
+            kafka.closed() shouldBe true
         }
 
         test("lukker Kafka-klienten når bekreftelse av offset feiler") {
@@ -191,12 +355,8 @@ class SisConsumerTest :
                 kafka.updateBeginningOffsets(mapOf(partition to 0L))
                 kafka.addRecord(ConsumerRecord(topic, 0, 0L, "key", vedtakJson()))
             }
-            val repository = mockk<ArbeidstakerVedtakRepository>()
-            every { repository.lagre(any()) } returns true
 
-            shouldThrow<CommitFailedException> {
-                SisConsumer(kafka, topic, tolker, repository).kjoer()
-            }
+            shouldThrow<CommitFailedException> { sisConsumer(kafka).kjoer() }
 
             kafka.closed() shouldBe true
         }
@@ -207,7 +367,7 @@ class SisConsumerTest :
             kafka.schedulePollTask { polled.set(true) }
 
             coroutineScope {
-                val job = launch(Dispatchers.IO) { SisConsumer(kafka, topic, tolker, mockk()).kjoer() }
+                val job = launch(Dispatchers.IO) { sisConsumer(kafka).kjoer() }
                 try {
                     withTimeout(5.seconds) {
                         while (!polled.get()) yield()

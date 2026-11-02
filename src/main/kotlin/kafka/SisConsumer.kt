@@ -10,19 +10,27 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import no.nav.hag.utils.bakgrunnsjobb.BakgrunnsjobbService
+import no.nav.helsearbeidsgiver.bakgrunnsjobb.ArbeidstakerVedtakJobb
 import no.nav.helsearbeidsgiver.helsesjekker.ShutDownAppState
+import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
+import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.log.logger
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import org.apache.kafka.clients.consumer.CloseOptions
 import org.apache.kafka.clients.consumer.Consumer
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Duration
 
 class SisConsumer(
     private val consumer: Consumer<String, String>,
     private val topic: String,
     private val tolker: SisTolker,
-    private val repository: ArbeidstakerVedtakRepository,
+    private val arbeidstakerVedtakRepository: ArbeidstakerVedtakRepository,
+    private val bakgrunnsjobbService: BakgrunnsjobbService,
+    private val db: Database,
 ) {
     private val sikkerLogger = sikkerLogger()
 
@@ -46,12 +54,28 @@ class SisConsumer(
 
             runCatching {
                 val melding = tolker.lesMelding(value) ?: return@forEach
-                // TODO: lag bg-jobb
-                val meldingLagret = repository.lagre(melding)
+
+                // Repositoryenes egne transaction(db) går inn i denne, slik at vedtak og jobb lagres atomisk.
+                val meldingLagret =
+                    transaction(db) {
+                        maxAttempts = 1
+                        queryTimeout = 10
+
+                        arbeidstakerVedtakRepository.lagre(melding).also { lagret ->
+                            if (lagret) {
+                                bakgrunnsjobbService.opprettJobbJson<ArbeidstakerVedtakJobb>(
+                                    maksAntallForsoek = 10,
+                                    data = melding.toJson(ArbeidstakerVedtakMelding.serializer()),
+                                )
+                            }
+                        }
+                    }
                 if (meldingLagret) {
                     sikkerLogger.info("Arbeidstakervedtak lagret med behandlingId ${melding.behandlingId}")
                 } else {
-                    sikkerLogger.info("Arbeidstakervedtak med behandlingId ${melding.behandlingId} var allerede lagret, ignorerer duplikat")
+                    sikkerLogger.info(
+                        "Arbeidstakervedtak med behandlingId ${melding.behandlingId} var allerede lagret, ignorerer duplikat",
+                    )
                 }
             }.onFailure {
                 sikkerLogger.error(
