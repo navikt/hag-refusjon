@@ -3,19 +3,12 @@ package no.nav.helsearbeidsgiver
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import io.mockk.mockk
-import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.auth.FakeTokenValidator
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
-import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
-import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
-import no.nav.helsearbeidsgiver.kafka.mockProducer
-import no.nav.helsearbeidsgiver.person.PdlService
-import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
-import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
+import no.nav.helsearbeidsgiver.refusjon.VedtakMottak
 
 class AppTest :
     FunSpec({
@@ -25,12 +18,8 @@ class AppTest :
                 application {
                     module(
                         FakeBucketStorage(),
-                        RefusjonProducer(mockProducer(), TEST_TOPIC),
-                        mockk<VirksomhetsnavnKlient>(),
-                        mockk<PdlService>(),
-                        mockk<ArkivService>(),
                         FakeTokenValidator(),
-                        mockk<RefusjonskravService>(),
+                        mockk<VedtakMottak>(),
                     )
                 }
 

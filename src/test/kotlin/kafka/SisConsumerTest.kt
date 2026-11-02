@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import io.mockk.mockk
 import io.mockk.spyk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
@@ -23,6 +24,7 @@ import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
 import no.nav.helsearbeidsgiver.refusjon.Avsender
 import no.nav.helsearbeidsgiver.refusjon.Utbetalingsdagtype
+import no.nav.helsearbeidsgiver.refusjon.VedtakService
 import no.nav.helsearbeidsgiver.refusjon.Yrkesaktivitetstype
 import no.nav.helsearbeidsgiver.refusjon.arbeidstakerVedtakMeldingMock
 import no.nav.helsearbeidsgiver.refusjon.utbetalingsdagMock
@@ -84,7 +86,7 @@ class SisConsumerTest :
 
         fun feilendeBakgrunnsjobbService(): BakgrunnsjobbService {
             val service = BakgrunnsjobbService(spyk(ExposedBakgrunnsjobRepository(db())))
-            service.registrer(ArbeidstakerVedtakJobb())
+            service.registrer(ArbeidstakerVedtakJobb(mockk<VedtakService>()))
             every { service.bakgrunnsjobbRepository.save(any()) } throws IllegalStateException("Kunne ikke lagre bakgrunnsjobb")
             return service
         }
@@ -105,7 +107,7 @@ class SisConsumerTest :
             databaseConfig = DatabaseConfig(postgres.jdbcUrl, postgres.username, postgres.password)
             repository = ArbeidstakerVedtakRepository(db())
             bakgrunnsjobbService = BakgrunnsjobbService(ExposedBakgrunnsjobRepository(db()))
-            bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb())
+            bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb(mockk<VedtakService>()))
         }
 
         beforeTest {

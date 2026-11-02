@@ -1,20 +1,22 @@
 package no.nav.helsearbeidsgiver.bakgrunnsjobb
 
+import kotlinx.coroutines.runBlocking
 import no.nav.hag.utils.bakgrunnsjobb.Bakgrunnsjobb
 import no.nav.hag.utils.bakgrunnsjobb.BakgrunnsjobbProsesserer
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
+import no.nav.helsearbeidsgiver.refusjon.VedtakService
 import no.nav.helsearbeidsgiver.utils.json.fromJson
-import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 
 const val JOB_TYPE = "ARBEIDSTAKERVEDTAK"
 
-class ArbeidstakerVedtakJobb : BakgrunnsjobbProsesserer {
+class ArbeidstakerVedtakJobb(
+    private val vedtakService: VedtakService,
+) : BakgrunnsjobbProsesserer {
     override fun prosesser(jobb: Bakgrunnsjobb) {
-        val skjema = jobb.dataJson?.fromJson(ArbeidstakerVedtakMelding.serializer())
-        if (skjema != null) {
-            sikkerLogger().debug("Bakgrunnsjobb: Behandler melding: {}", skjema)
-            // vedtakService.behandle(skjema)
-        }
+        val melding =
+            checkNotNull(jobb.dataJson) { "Bakgrunnsjobb ${jobb.uuid} mangler data." }
+                .fromJson(ArbeidstakerVedtakMelding.serializer())
+        runBlocking { vedtakService.behandle(melding) }
     }
 
     override val type: String
