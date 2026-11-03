@@ -61,7 +61,12 @@ class VedtakServiceTest :
 
             bucketStorage.pdfer[refusjonsutfallId] shouldBe pdfBytes
 
-            coVerify(exactly = 1) { arkivService.arkiver(any(), refusjonsutfallId, ARBEIDSGIVER_NAVN, pdfBytes) }
+            coVerify(exactly = 1) {
+                arkivService.arkiver(
+                    match { it.refusjonUtfallId == refusjonsutfallId && it.arbeidsgiverNavn == ARBEIDSGIVER_NAVN },
+                    pdfBytes,
+                )
+            }
             coVerify(exactly = 1) {
                 refusjonskravService.hentRefusjonskrav(listOf(Uuid.parse("65f84fa6-554e-4200-9466-30fc7e1ffb2e")))
             }
@@ -98,7 +103,7 @@ class VedtakServiceTest :
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
             val arkivService =
                 mockk<ArkivService> {
-                    coEvery { arkiver(any(), any(), any(), any()) } throws RuntimeException("dokarkiv nede")
+                    coEvery { arkiver(any(), any()) } throws RuntimeException("dokarkiv nede")
                 }
 
             shouldThrow<IllegalStateException> {

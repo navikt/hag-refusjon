@@ -76,7 +76,7 @@ class VedtakService(
 
         val journalpostId =
             try {
-                arkivService.arkiver(melding, refusjonUtfallId, arbeidsgiverNavn, pdf)
+                arkivService.arkiver(refusjonUtfall, pdf)
             } catch (e: Exception) {
                 throw loggOgKast(
                     "Feil ved arkivering av refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",

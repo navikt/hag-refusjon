@@ -7,10 +7,9 @@ import no.nav.helsearbeidsgiver.dokarkiv.domene.DokumentVariant
 import no.nav.helsearbeidsgiver.dokarkiv.domene.GjelderPerson
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Kanal
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Mottaker
-import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
+import no.nav.helsearbeidsgiver.refusjon.RefusjonUtfall
 import java.util.Base64
 import java.util.UUID
-import kotlin.uuid.Uuid
 
 private const val TITTEL = "Refusjon av sykepenger til arbeidsgiver"
 private const val BREVKODE = "REFUSJON_SYKEPENGER"
@@ -26,16 +25,14 @@ class ArkivService(
     )
 
     suspend fun arkiver(
-        melding: ArbeidstakerVedtakMelding,
-        refusjonUtfallId: Uuid,
-        arbeidsgiverNavn: String,
+        refusjonUtfall: RefusjonUtfall,
         pdf: ByteArray,
     ): String =
         dokArkivClient
             .opprettOgFerdigstillJournalpostUtgaaende(
                 tittel = TITTEL,
-                gjelderPerson = GjelderPerson(melding.foedselsnummer.verdi),
-                mottaker = Mottaker.Organisasjon(orgnr = melding.organisasjonsnummer.verdi, navn = arbeidsgiverNavn),
+                gjelderPerson = GjelderPerson(refusjonUtfall.fnr.verdi),
+                mottaker = Mottaker.Organisasjon(orgnr = refusjonUtfall.orgnr.verdi, navn = refusjonUtfall.arbeidsgiverNavn),
                 dokumenter =
                     listOf(
                         Dokument(
@@ -47,12 +44,12 @@ class ArkivService(
                                         filtype = "PDFA",
                                         fysiskDokument = Base64.getEncoder().encodeToString(pdf),
                                         variantFormat = "ARKIV",
-                                        filnavn = "refusjon-$refusjonUtfallId.pdf",
+                                        filnavn = "refusjon-${refusjonUtfall.refusjonUtfallId}.pdf",
                                     ),
                                 ),
                         ),
                     ),
-                eksternReferanseId = refusjonUtfallId.toString(),
+                eksternReferanseId = refusjonUtfall.refusjonUtfallId.toString(),
                 callId = UUID.randomUUID().toString(),
                 kanal = Kanal.ALTINN,
             ).journalpostId

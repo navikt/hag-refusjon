@@ -41,7 +41,7 @@ fun pdlServiceMock(navn: String? = SYKMELDT_NAVN): PdlService =
 
 fun arkivServiceMock(): ArkivService =
     mockk {
-        coEvery { arkiver(any(), any(), any(), any()) } returns JOURNALPOST_ID
+        coEvery { arkiver(any(), any()) } returns JOURNALPOST_ID
     }
 
 fun mockPdfgen(
