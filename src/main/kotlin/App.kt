@@ -32,6 +32,8 @@ import no.nav.helsearbeidsgiver.kafka.createKafkaConsumerConfig
 import no.nav.helsearbeidsgiver.kafka.createKafkaProducerConfig
 import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
+import no.nav.helsearbeidsgiver.refusjon.VedtakMottak
+import no.nav.helsearbeidsgiver.refusjon.VedtakService
 import no.nav.helsearbeidsgiver.refusjon.pdfRoutes
 import no.nav.helsearbeidsgiver.refusjon.vedtakRoutes
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravRepository
@@ -91,10 +93,6 @@ fun main() {
         )
     DatabaseConfig().use { database ->
 
-        val bakgrunnsjobbService = BakgrunnsjobbService(ExposedBakgrunnsjobRepository(database.database))
-        bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb())
-        bakgrunnsjobbService.startAsync(retryOnFail = true)
-
         val refusjonskravService =
             RefusjonskravService(
                 url = getPropertyOrNull("REFUSJONSKRAV_URL").orDefault { throw RuntimeException("REFUSJONSKRAV_URL ikke satt") },
@@ -105,6 +103,22 @@ fun main() {
                     ).orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
                 repository = RefusjonskravRepository(database.database),
             )
+
+        val vedtakService =
+            VedtakService(
+                bucketStorage = bucketStorage,
+                refusjonProducer = refusjonProducer,
+                virksomhetsnavnKlient = virksomhetsnavnKlient,
+                pdlService = pdlService,
+                arkivService = arkivService,
+                refusjonskravService = refusjonskravService,
+            )
+
+        val bakgrunnsjobbService = BakgrunnsjobbService(ExposedBakgrunnsjobRepository(database.database))
+        bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb(vedtakService))
+        bakgrunnsjobbService.startAsync(retryOnFail = true)
+
+        val arbeidstakerVedtakRepository = ArbeidstakerVedtakRepository(database.database)
 
         val sisConsumer =
             SisConsumer(
@@ -120,24 +134,18 @@ fun main() {
                     ),
                 topic = getPropertyOrNull("KAFKA_TOPIC_SIS").orDefault { throw RuntimeException("KAFKA_TOPIC_SIS ikke satt") },
                 tolker = SisTolker(),
-                arbeidstakerVedtakRepository = ArbeidstakerVedtakRepository(database.database),
+                arbeidstakerVedtakRepository = arbeidstakerVedtakRepository,
                 bakgrunnsjobbService = bakgrunnsjobbService,
                 db = database.database,
             )
+
+        val vedtakMottak = VedtakMottak(arbeidstakerVedtakRepository, bakgrunnsjobbService, database.database)
 
         embeddedServer(
             factory = Netty,
             port = 8080,
             module = {
-                module(
-                    bucketStorage,
-                    refusjonProducer,
-                    virksomhetsnavnKlient,
-                    pdlService,
-                    arkivService,
-                    tokenValidator,
-                    refusjonskravService,
-                )
+                module(bucketStorage, tokenValidator, vedtakMottak)
                 configureSisConsumer(sisConsumer)
             },
         ).start(wait = true)
@@ -146,12 +154,8 @@ fun main() {
 
 fun Application.module(
     bucketStorage: BucketStorage,
-    refusjonProducer: RefusjonProducer,
-    virksomhetsnavnKlient: VirksomhetsnavnKlient,
-    pdlService: PdlService,
-    arkivService: ArkivService,
     tokenValidator: TokenValidator,
-    refusjonskravService: RefusjonskravService,
+    vedtakMottak: VedtakMottak,
 ) {
     install(ContentNegotiation) {
         json(jsonConfig)
@@ -165,7 +169,7 @@ fun Application.module(
     }
     routing {
         naisRoutes()
-        vedtakRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService, refusjonskravService)
+        vedtakRoutes(vedtakMottak)
         authenticate(ENTRA_ID_AUTH) {
             pdfRoutes(bucketStorage)
         }

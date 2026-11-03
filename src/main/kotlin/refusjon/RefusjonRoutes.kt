@@ -7,39 +7,24 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
-import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
-import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
-import no.nav.helsearbeidsgiver.person.PdlService
-import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
-import no.nav.helsearbeidsgiver.utils.genererRefusjonPdf
 import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.json.toPretty
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import no.nav.helsearbeidsgiver.utils.respondMedPDF
 import no.nav.helsearbeidsgiver.utils.toUuidOrNull
-import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import org.slf4j.LoggerFactory
-import java.util.UUID
-import kotlin.uuid.toKotlinUuid
 
 private val logger = LoggerFactory.getLogger("RefusjonRoutes")
 
-fun Route.vedtakRoutes(
-    bucketStorage: BucketStorage,
-    refusjonProducer: RefusjonProducer,
-    virksomhetsnavnKlient: VirksomhetsnavnKlient,
-    pdlService: PdlService,
-    arkivService: ArkivService,
-    refusjonskravService: RefusjonskravService,
-) {
+fun Route.vedtakRoutes(vedtakMottak: VedtakMottak) {
     // midlertidlig mottak POST route fra LPS API (bytter til å motta direkte fra SAS i fremtiden)
     post("/arbeidstaker-vedtak") {
         val melding =
             try {
                 call.receive<ArbeidstakerVedtakMelding>()
             } catch (e: BadRequestException) {
-                logger.warn("Kunne ikke lese melding om arbeidstakervedtak.")
+                sikkerLogger().warn("Kunne ikke lese melding om arbeidstakervedtak.", e)
                 call.respond(HttpStatusCode.BadRequest, "Ugyldig melding")
                 return@post
             }
@@ -48,95 +33,13 @@ fun Route.vedtakRoutes(
             "Mottok arbeidstakervedtak med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}:\n" +
                 melding.toJson(ArbeidstakerVedtakMelding.serializer()).toPretty(),
         )
-        logger.info("Mottok arbeidstakervedtak for vedtaksperiodeId ${melding.vedtaksperiodeId}.")
 
-        // TODO: putt alle oppslag etc i Service / bg-jobb-kode
-
-        val arbeidsgiverNavn =
-            try {
-                virksomhetsnavnKlient.hentVirksomhetsnavn(melding.organisasjonsnummer)
-                    ?: throw IllegalStateException("Fant ikke virksomhetsnavn.")
-            } catch (e: Exception) {
-                "Feil ved henting av virksomhetsnavn for refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}."
-                    .also {
-                        logger.error(it)
-                        sikkerLogger().error(it, e)
-                    }
-                call.respond(HttpStatusCode.InternalServerError, "Feil ved henting av virksomhetsnavn")
-                return@post
-            }
-
-        val sykmeldtNavn =
-            try {
-                pdlService.hentSykmeldtnavn(melding.foedselsnummer)
-                    ?: throw IllegalStateException("Fant ikke sykmeldtnavn.")
-            } catch (e: Exception) {
-                "Feil ved henting av sykmeldtnavn for refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}."
-                    .also {
-                        logger.error(it)
-                        sikkerLogger().error(it, e)
-                    }
-                call.respond(HttpStatusCode.InternalServerError, "Feil ved henting av sykmeldtnavn")
-                return@post
-            }
-
-        val refusjonskrav = refusjonskravService.hentRefusjonskrav(inntektsmeldingIder = melding.hagInntektsmeldingReferanser())
-        val refusjonUtfallId = UUID.randomUUID().toKotlinUuid()
-        val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, refusjonskrav, arbeidsgiverNavn, sykmeldtNavn)
-
-        val pdf =
-            try {
-                val generertPdf = genererRefusjonPdf(refusjonUtfall.tilRefusjonUtfallPdfData())
-                bucketStorage.lagrePdf(refusjonUtfallId, generertPdf)
-                generertPdf
-            } catch (e: Exception) {
-                "Feil ved generering eller lagring av PDF for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
-                    .also {
-                        logger.error(it)
-                        sikkerLogger().error(it, e)
-                    }
-                call.respond(HttpStatusCode.InternalServerError, "Feil ved lagring av refusjonsutfall")
-                return@post
-            }
-
-        logger.info(
-            "Lagret PDF for refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
-        )
-
-        val journalpostId =
-            try {
-                arkivService.arkiver(melding, refusjonUtfallId, arbeidsgiverNavn, pdf)
-            } catch (e: Exception) {
-                "Feil ved arkivering av refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
-                    .also {
-                        logger.error(it)
-                        sikkerLogger().error(it, e)
-                    }
-                call.respond(HttpStatusCode.InternalServerError, "Feil ved arkivering av refusjonsutfall")
-                return@post
-            }
-
-        logger.info(
-            "Arkiverte refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId} i journalpost $journalpostId.",
-        )
-
-        try {
-            refusjonProducer.send(melding.vedtaksperiodeId, refusjonUtfall)
-        } catch (e: Exception) {
-            "Feil ved publisering av refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}."
-                .also {
-                    logger.error(it)
-                    sikkerLogger().error(it, e)
-                }
-            call.respond(HttpStatusCode.InternalServerError, "Feil ved publisering av refusjonsutfall")
-            return@post
+        if (vedtakMottak.motta(melding)) {
+            call.respond(HttpStatusCode.Created)
+        } else {
+            sikkerLogger().info("Arbeidstakervedtak med behandlingId ${melding.behandlingId} var allerede lagret.")
+            call.respond(HttpStatusCode.Conflict, "Vedtaket er allerede mottatt")
         }
-
-        logger.info(
-            "Publiserte refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
-        )
-
-        call.respond(HttpStatusCode.OK, refusjonUtfallId.toString())
     }
 }
 
