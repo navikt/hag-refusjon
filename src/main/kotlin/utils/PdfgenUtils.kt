@@ -21,9 +21,9 @@ object PdfgenHttpClient {
     val PDFGEN_REFUSJON_URL = getPropertyOrNull("PDFGEN_REFUSJON_URL").orDefault { throw RuntimeException("PDFGEN_REFUSJON_URL ikke satt") }
 }
 
-suspend fun genererRefusjonPdf(pdfData: RefusjonUtfallPdfData) = hentPdf(pdfData, PdfgenHttpClient.PDFGEN_REFUSJON_URL)
+suspend fun genererRefusjonPdf(pdfData: RefusjonUtfallPdfData) = genererPdf(pdfData, PdfgenHttpClient.PDFGEN_REFUSJON_URL)
 
-private suspend fun hentPdf(
+private suspend fun genererPdf(
     body: Any?,
     url: String,
 ): ByteArray {

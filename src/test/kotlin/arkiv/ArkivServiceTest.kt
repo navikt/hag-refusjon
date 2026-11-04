@@ -13,6 +13,7 @@ import no.nav.helsearbeidsgiver.dokarkiv.domene.Kanal
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Mottaker
 import no.nav.helsearbeidsgiver.dokarkiv.domene.OpprettOgFerdigstillResponse
 import no.nav.helsearbeidsgiver.refusjon.arbeidstakerVedtakMeldingMock
+import no.nav.helsearbeidsgiver.refusjon.tilRefusjonUtfall
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
@@ -56,9 +57,9 @@ class ArkivServiceTest :
 
             val journalpostId =
                 ArkivService(dokArkivClient).arkiver(
-                    melding = arbeidstakerVedtakMeldingMock(fnr, orgnr),
-                    refusjonUtfallId = refusjonUtfallId,
-                    arbeidsgiverNavn = "Billys Bollefabrikk AS",
+                    refusjonUtfall =
+                        arbeidstakerVedtakMeldingMock(fnr, orgnr)
+                            .tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann"),
                     pdf = pdf,
                 )
 

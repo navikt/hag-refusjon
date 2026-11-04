@@ -6,8 +6,10 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.ktor.http.HttpStatusCode
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
@@ -27,12 +29,15 @@ class VedtakServiceTest :
         val pdfBytes = "PDF innhold".toByteArray()
         val melding = gyldigMelding(FNR, ORGNR).parseJson().fromJson(ArbeidstakerVedtakMelding.serializer())
 
-        afterEach { unmockkAll() }
-
         val refusjonskravService =
             mockk<RefusjonskravService> {
                 coEvery { hentRefusjonskrav(any()) } returns emptyList()
             }
+
+        afterEach {
+            unmockkAll()
+            clearMocks(refusjonskravService, answers = false)
+        }
 
         fun vedtakService(
             bucketStorage: FakeBucketStorage = FakeBucketStorage(),
@@ -40,6 +45,7 @@ class VedtakServiceTest :
             virksomhetsnavnKlient: VirksomhetsnavnKlient = virksomhetsnavnKlientMock(),
             pdlService: PdlService = pdlServiceMock(),
             arkivService: ArkivService = arkivServiceMock(),
+            repository: RefusjonUtfallRepository = utfallRepositoryMock(),
         ) = VedtakService(
             bucketStorage,
             refusjonProducer,
@@ -47,7 +53,85 @@ class VedtakServiceTest :
             pdlService,
             arkivService,
             refusjonskravService,
+            repository,
         )
+
+        test("behandle lagrer utfallet og gjenbruker det uten nye oppslag når behandle kalles igjen") {
+            val bucketStorage = FakeBucketStorage()
+            val repository = utfallRepositoryMock()
+            val klient = virksomhetsnavnKlientMock()
+            val pdl = pdlServiceMock()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            val foersteId =
+                vedtakService(
+                    bucketStorage,
+                    virksomhetsnavnKlient = klient,
+                    pdlService = pdl,
+                    repository = repository,
+                ).behandle(melding)
+            val andreId =
+                vedtakService(
+                    bucketStorage,
+                    virksomhetsnavnKlient = klient,
+                    pdlService = pdl,
+                    repository = repository,
+                ).behandle(melding)
+
+            andreId shouldBe foersteId
+            repository.hent(melding.behandlingId)?.refusjonUtfallId shouldBe foersteId
+            coVerify(exactly = 1) { klient.hentVirksomhetsnavn(ORGNR) }
+            coVerify(exactly = 1) { pdl.hentSykmeldtnavn(FNR) }
+        }
+
+        test("gjenbruker lagret PDF fra bucket i stedet for å generere den på nytt") {
+            val bucketStorage = FakeBucketStorage()
+            val repository = utfallRepositoryMock()
+            val arkivService = arkivServiceMock()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            val refusjonsutfallId = vedtakService(bucketStorage, arkivService = arkivService, repository = repository).behandle(melding)
+
+            // Hvis PDF-en ble generert på nytt ville den fått dette innholdet.
+            mockPdfgen(HttpStatusCode.OK, "Annet innhold".toByteArray())
+            vedtakService(bucketStorage, arkivService = arkivService, repository = repository).behandle(melding)
+
+            bucketStorage.pdfer[refusjonsutfallId] shouldBe pdfBytes
+            coVerify(exactly = 2) { arkivService.arkiver(any(), pdfBytes) }
+        }
+
+        test("bruker utfallet som allerede er lagret hvis et annet kall rakk å lagre først") {
+            // skal vanligvis ikke skje, men teoretisk mulig at to podder kjører samtidig under deploy
+            val bucketStorage = FakeBucketStorage()
+            val eksisterende = melding.tilRefusjonUtfall(Uuid.random(), emptyList(), ARBEIDSGIVER_NAVN, SYKMELDT_NAVN)
+            val repository =
+                mockk<RefusjonUtfallRepository> {
+                    every { hent(any()) } returnsMany listOf(null, eksisterende)
+                    every { lagre(any(), any()) } returns false
+                }
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            val refusjonsutfallId = vedtakService(bucketStorage, repository = repository).behandle(melding)
+
+            refusjonsutfallId shouldBe eksisterende.refusjonUtfallId
+            bucketStorage.pdfer.keys shouldBe setOf(eksisterende.refusjonUtfallId)
+        }
+
+        test("behandle feiler når lagring av utfall feiler") {
+            val bucketStorage = FakeBucketStorage()
+            val repository =
+                mockk<RefusjonUtfallRepository> {
+                    every { hent(any()) } returns null
+                    every { lagre(any(), any()) } throws RuntimeException("db nede")
+                }
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            shouldThrow<IllegalStateException> {
+                vedtakService(bucketStorage, repository = repository).behandle(melding)
+            }
+
+            bucketStorage.pdfer.size shouldBe 0
+        }
 
         test("behandle genererer PDF, lagrer den i bucket, arkiverer og publiserer refusjonsutfall") {
             val bucketStorage = FakeBucketStorage()
@@ -61,7 +145,12 @@ class VedtakServiceTest :
 
             bucketStorage.pdfer[refusjonsutfallId] shouldBe pdfBytes
 
-            coVerify(exactly = 1) { arkivService.arkiver(any(), refusjonsutfallId, ARBEIDSGIVER_NAVN, pdfBytes) }
+            coVerify(exactly = 1) {
+                arkivService.arkiver(
+                    match { it.refusjonUtfallId == refusjonsutfallId && it.arbeidsgiverNavn == ARBEIDSGIVER_NAVN },
+                    pdfBytes,
+                )
+            }
             coVerify(exactly = 1) {
                 refusjonskravService.hentRefusjonskrav(listOf(Uuid.parse("65f84fa6-554e-4200-9466-30fc7e1ffb2e")))
             }
@@ -98,7 +187,7 @@ class VedtakServiceTest :
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
             val arkivService =
                 mockk<ArkivService> {
-                    coEvery { arkiver(any(), any(), any(), any()) } throws RuntimeException("dokarkiv nede")
+                    coEvery { arkiver(any(), any()) } throws RuntimeException("dokarkiv nede")
                 }
 
             shouldThrow<IllegalStateException> {
