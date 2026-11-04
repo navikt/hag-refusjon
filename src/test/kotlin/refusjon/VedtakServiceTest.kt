@@ -6,8 +6,10 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.ktor.http.HttpStatusCode
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
@@ -27,12 +29,15 @@ class VedtakServiceTest :
         val pdfBytes = "PDF innhold".toByteArray()
         val melding = gyldigMelding(FNR, ORGNR).parseJson().fromJson(ArbeidstakerVedtakMelding.serializer())
 
-        afterEach { unmockkAll() }
-
         val refusjonskravService =
             mockk<RefusjonskravService> {
                 coEvery { hentRefusjonskrav(any()) } returns emptyList()
             }
+
+        afterEach {
+            unmockkAll()
+            clearMocks(refusjonskravService, answers = false)
+        }
 
         fun vedtakService(
             bucketStorage: FakeBucketStorage = FakeBucketStorage(),
@@ -40,6 +45,7 @@ class VedtakServiceTest :
             virksomhetsnavnKlient: VirksomhetsnavnKlient = virksomhetsnavnKlientMock(),
             pdlService: PdlService = pdlServiceMock(),
             arkivService: ArkivService = arkivServiceMock(),
+            repository: RefusjonUtfallRepository = utfallRepositoryMock(),
         ) = VedtakService(
             bucketStorage,
             refusjonProducer,
@@ -47,7 +53,68 @@ class VedtakServiceTest :
             pdlService,
             arkivService,
             refusjonskravService,
+            repository,
         )
+
+        test("behandle lagrer utfallet og gjenbruker det uten nye oppslag når behandle kalles igjen") {
+            val bucketStorage = FakeBucketStorage()
+            val repository = utfallRepositoryMock()
+            val klient = virksomhetsnavnKlientMock()
+            val pdl = pdlServiceMock()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            val foersteId =
+                vedtakService(
+                    bucketStorage,
+                    virksomhetsnavnKlient = klient,
+                    pdlService = pdl,
+                    repository = repository,
+                ).behandle(melding)
+            val andreId =
+                vedtakService(
+                    bucketStorage,
+                    virksomhetsnavnKlient = klient,
+                    pdlService = pdl,
+                    repository = repository,
+                ).behandle(melding)
+
+            andreId shouldBe foersteId
+            repository.hent(melding.behandlingId)?.refusjonUtfallId shouldBe foersteId
+            coVerify(exactly = 1) { klient.hentVirksomhetsnavn(ORGNR) }
+            coVerify(exactly = 1) { pdl.hentSykmeldtnavn(FNR) }
+        }
+
+        test("gjenbruker lagret PDF fra bucket i stedet for å generere den på nytt") {
+            val bucketStorage = FakeBucketStorage()
+            val repository = utfallRepositoryMock()
+            val arkivService = arkivServiceMock()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            val refusjonsutfallId = vedtakService(bucketStorage, arkivService = arkivService, repository = repository).behandle(melding)
+
+            // Hvis PDF-en ble generert på nytt ville den fått dette innholdet.
+            mockPdfgen(HttpStatusCode.OK, "Annet innhold".toByteArray())
+            vedtakService(bucketStorage, arkivService = arkivService, repository = repository).behandle(melding)
+
+            bucketStorage.pdfer[refusjonsutfallId] shouldBe pdfBytes
+            coVerify(exactly = 2) { arkivService.arkiver(any(), pdfBytes) }
+        }
+
+        test("behandle feiler når lagring av utfall feiler") {
+            val bucketStorage = FakeBucketStorage()
+            val repository =
+                mockk<RefusjonUtfallRepository> {
+                    every { hent(any()) } returns null
+                    every { lagre(any(), any()) } throws RuntimeException("db nede")
+                }
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            shouldThrow<IllegalStateException> {
+                vedtakService(bucketStorage, repository = repository).behandle(melding)
+            }
+
+            bucketStorage.pdfer.size shouldBe 0
+        }
 
         test("behandle genererer PDF, lagrer den i bucket, arkiverer og publiserer refusjonsutfall") {
             val bucketStorage = FakeBucketStorage()

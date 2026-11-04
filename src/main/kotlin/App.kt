@@ -32,6 +32,7 @@ import no.nav.helsearbeidsgiver.kafka.createKafkaConsumerConfig
 import no.nav.helsearbeidsgiver.kafka.createKafkaProducerConfig
 import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
+import no.nav.helsearbeidsgiver.refusjon.RefusjonUtfallRepository
 import no.nav.helsearbeidsgiver.refusjon.VedtakMottak
 import no.nav.helsearbeidsgiver.refusjon.VedtakService
 import no.nav.helsearbeidsgiver.refusjon.pdfRoutes
@@ -112,6 +113,7 @@ fun main() {
                 pdlService = pdlService,
                 arkivService = arkivService,
                 refusjonskravService = refusjonskravService,
+                refusjonUtfallRepository = RefusjonUtfallRepository(database.database),
             )
 
         val bakgrunnsjobbService = BakgrunnsjobbService(ExposedBakgrunnsjobRepository(database.database))

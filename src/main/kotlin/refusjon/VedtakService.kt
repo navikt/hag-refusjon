@@ -22,6 +22,7 @@ class VedtakService(
     private val pdlService: PdlService,
     private val arkivService: ArkivService,
     private val refusjonskravService: RefusjonskravService,
+    private val refusjonUtfallRepository: RefusjonUtfallRepository,
 ) {
     private val logger = LoggerFactory.getLogger(VedtakService::class.java)
     private val sikkerLogger = sikkerLogger()
@@ -32,37 +33,15 @@ class VedtakService(
                 melding.toJson(ArbeidstakerVedtakMelding.serializer()).toPretty(),
         )
 
-        val arbeidsgiverNavn =
-            try {
-                virksomhetsnavnKlient.hentVirksomhetsnavn(melding.organisasjonsnummer)
-                    ?: throw IllegalStateException("Fant ikke virksomhetsnavn.")
-            } catch (e: Exception) {
-                throw loggOgKast(
-                    "Feil ved henting av virksomhetsnavn for refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
-                    e,
-                )
-            }
-
-        val sykmeldtNavn =
-            try {
-                pdlService.hentSykmeldtnavn(melding.foedselsnummer)
-                    ?: throw IllegalStateException("Fant ikke sykmeldtnavn.")
-            } catch (e: Exception) {
-                throw loggOgKast(
-                    "Feil ved henting av sykmeldtnavn for refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
-                    e,
-                )
-            }
-
-        val refusjonskrav = refusjonskravService.hentRefusjonskrav(inntektsmeldingIder = melding.hagInntektsmeldingReferanser())
-        val refusjonUtfallId = UUID.randomUUID().toKotlinUuid()
-        val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, refusjonskrav, arbeidsgiverNavn, sykmeldtNavn)
-
+        val refusjonUtfall =
+            refusjonUtfallRepository.hent(melding.behandlingId)
+                ?: hentDataOgLagreRefusjonUtfall(melding)
+        val refusjonUtfallId = refusjonUtfall.refusjonUtfallId
         val pdf =
             try {
-                val generertPdf = genererRefusjonPdf(refusjonUtfall.tilRefusjonUtfallPdfData())
-                bucketStorage.lagrePdf(refusjonUtfallId, generertPdf)
-                generertPdf
+                bucketStorage.hentPdf(refusjonUtfallId)
+                    ?: genererRefusjonPdf(refusjonUtfall.tilRefusjonUtfallPdfData())
+                        .also { bucketStorage.lagrePdf(refusjonUtfallId, it) }
             } catch (e: Exception) {
                 throw loggOgKast(
                     "Feil ved generering eller lagring av PDF for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
@@ -102,6 +81,46 @@ class VedtakService(
         )
 
         return refusjonUtfallId
+    }
+
+    private suspend fun hentDataOgLagreRefusjonUtfall(melding: ArbeidstakerVedtakMelding): RefusjonUtfall {
+        val refusjonskrav = refusjonskravService.hentRefusjonskrav(inntektsmeldingIder = melding.hagInntektsmeldingReferanser())
+
+        val arbeidsgiverNavn =
+            try {
+                virksomhetsnavnKlient.hentVirksomhetsnavn(melding.organisasjonsnummer)
+                    ?: throw IllegalStateException("Fant ikke virksomhetsnavn.")
+            } catch (e: Exception) {
+                throw loggOgKast(
+                    "Feil ved henting av virksomhetsnavn for refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+                    e,
+                )
+            }
+
+        val sykmeldtNavn =
+            try {
+                pdlService.hentSykmeldtnavn(melding.foedselsnummer)
+                    ?: throw IllegalStateException("Fant ikke sykmeldtnavn.")
+            } catch (e: Exception) {
+                throw loggOgKast(
+                    "Feil ved henting av sykmeldtnavn for refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+                    e,
+                )
+            }
+
+        val refusjonUtfall =
+            melding.tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), refusjonskrav, arbeidsgiverNavn, sykmeldtNavn)
+
+        try {
+            refusjonUtfallRepository.lagre(melding.behandlingId, refusjonUtfall)
+        } catch (e: Exception) {
+            throw loggOgKast(
+                "Feil ved lagring av refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+                e,
+            )
+        }
+
+        return refusjonUtfall
     }
 
     private fun loggOgKast(

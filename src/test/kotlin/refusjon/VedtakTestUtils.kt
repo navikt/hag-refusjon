@@ -22,6 +22,7 @@ import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
+import kotlin.uuid.Uuid
 
 const val ARBEIDSGIVER_NAVN = "Billys Bollefabrikk AS"
 const val SYKMELDT_NAVN = "Ola Nordmann"
@@ -119,3 +120,11 @@ fun gyldigMelding(
       "harArbeidsgiverØnsketRefusjon": true
     }
     """.trimIndent()
+
+fun utfallRepositoryMock(): RefusjonUtfallRepository {
+    val lagret = mutableMapOf<Uuid, RefusjonUtfall>()
+    return mockk {
+        every { hent(any()) } answers { lagret[firstArg()] }
+        every { lagre(any(), any()) } answers { lagret.putIfAbsent(firstArg(), secondArg()) == null }
+    }
+}
