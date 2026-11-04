@@ -37,21 +37,24 @@ class VedtakService(
             refusjonUtfallRepository.hent(melding.behandlingId)
                 ?: hentDataOgLagreRefusjonUtfall(melding)
         val refusjonUtfallId = refusjonUtfall.refusjonUtfallId
+
         val pdf =
             try {
-                bucketStorage.hentPdf(refusjonUtfallId)
-                    ?: genererRefusjonPdf(refusjonUtfall.tilRefusjonUtfallPdfData())
-                        .also { bucketStorage.lagrePdf(refusjonUtfallId, it) }
+                bucketStorage.hentPdf(refusjonUtfallId)?.also {
+                    sikkerLogger.info("Fant eksisterende PDF for refusjonsutfall med refusjonsutfallId $refusjonUtfallId.")
+                } ?: genererRefusjonPdf(refusjonUtfall.tilRefusjonUtfallPdfData())
+                    .also {
+                        bucketStorage.lagrePdf(refusjonUtfallId, it)
+                        sikkerLogger.info(
+                            "Genererte og lagret PDF for refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+                        )
+                    }
             } catch (e: Exception) {
                 throw loggOgKast(
                     "Feil ved generering eller lagring av PDF for refusjonsutfall med refusjonUtfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
                     e,
                 )
             }
-
-        sikkerLogger.info(
-            "Lagret PDF for refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
-        )
 
         val journalpostId =
             try {
@@ -112,15 +115,19 @@ class VedtakService(
             melding.tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), refusjonskrav, arbeidsgiverNavn, sykmeldtNavn)
 
         try {
-            refusjonUtfallRepository.lagre(melding.behandlingId, refusjonUtfall)
+            val lagret = refusjonUtfallRepository.lagre(melding.behandlingId, refusjonUtfall)
+            if (lagret) return refusjonUtfall
+
+            // Mot race condition: Bruk alltid det lagrede refusjonsutfallet slik at id-en er den samme i PDF, arkiv og Kafka.
+            return checkNotNull(refusjonUtfallRepository.hent(melding.behandlingId)) {
+                "Fant ikke lagret refusjonsutfall etter mislykket lagring."
+            }
         } catch (e: Exception) {
             throw loggOgKast(
                 "Feil ved lagring av refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
                 e,
             )
         }
-
-        return refusjonUtfall
     }
 
     private fun loggOgKast(

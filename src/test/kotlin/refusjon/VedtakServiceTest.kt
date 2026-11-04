@@ -100,6 +100,23 @@ class VedtakServiceTest :
             coVerify(exactly = 2) { arkivService.arkiver(any(), pdfBytes) }
         }
 
+        test("bruker utfallet som allerede er lagret hvis et annet kall rakk å lagre først") {
+            // skal vanligvis ikke skje, men teoretisk mulig at to podder kjører samtidig under deploy
+            val bucketStorage = FakeBucketStorage()
+            val eksisterende = melding.tilRefusjonUtfall(Uuid.random(), emptyList(), ARBEIDSGIVER_NAVN, SYKMELDT_NAVN)
+            val repository =
+                mockk<RefusjonUtfallRepository> {
+                    every { hent(any()) } returnsMany listOf(null, eksisterende)
+                    every { lagre(any(), any()) } returns false
+                }
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            val refusjonsutfallId = vedtakService(bucketStorage, repository = repository).behandle(melding)
+
+            refusjonsutfallId shouldBe eksisterende.refusjonUtfallId
+            bucketStorage.pdfer.keys shouldBe setOf(eksisterende.refusjonUtfallId)
+        }
+
         test("behandle feiler når lagring av utfall feiler") {
             val bucketStorage = FakeBucketStorage()
             val repository =
