@@ -10,11 +10,13 @@ import io.mockk.spyk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import kotlinx.serialization.SerializationException
 import no.nav.hag.utils.bakgrunnsjobb.BakgrunnsjobbService
+import no.nav.hag.utils.bakgrunnsjobb.LeaderConfig
 import no.nav.hag.utils.bakgrunnsjobb.exposed.ExposedBakgrunnsjobRepository
 import no.nav.helsearbeidsgiver.bakgrunnsjobb.ArbeidstakerVedtakJobb
 import no.nav.helsearbeidsgiver.bakgrunnsjobb.JOB_TYPE
@@ -44,6 +46,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.testcontainers.containers.PostgreSQLContainer
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.toKotlinUuid
 
@@ -82,7 +85,17 @@ class SisConsumerTest :
             kafka: MockConsumer<String, String>,
             vedtakRepository: ArbeidstakerVedtakRepository = repository,
             service: BakgrunnsjobbService = bakgrunnsjobbService,
-        ) = SisConsumer(kafka, topic, tolker, vedtakRepository, service, db())
+            leaderConfig: LeaderConfig = LeaderConfig { false },
+        ) = SisConsumer(
+            consumer = kafka,
+            topic = topic,
+            tolker = tolker,
+            arbeidstakerVedtakRepository = vedtakRepository,
+            bakgrunnsjobbService = service,
+            db = db(),
+            leaderConfig = leaderConfig,
+            lederSjekkIntervall = 10.milliseconds,
+        )
 
         fun feilendeBakgrunnsjobbService(): BakgrunnsjobbService {
             val service = BakgrunnsjobbService(spyk(ExposedBakgrunnsjobRepository(db())))
@@ -373,6 +386,42 @@ class SisConsumerTest :
                 try {
                     withTimeout(5.seconds) {
                         while (!polled.get()) yield()
+                    }
+                } finally {
+                    job.cancelAndJoin()
+                }
+            }
+
+            kafka.closed() shouldBe true
+        }
+
+        test("konsumerer ikke når pod er leder") {
+            val kafka = MockConsumer<String, String>("earliest")
+            val polled = AtomicBoolean(false)
+            kafka.schedulePollTask { polled.set(true) }
+
+            coroutineScope {
+                val job = launch(Dispatchers.IO) { sisConsumer(kafka, leaderConfig = { true }).kjoer() }
+                delay(200.milliseconds)
+                job.cancelAndJoin()
+            }
+
+            polled.get() shouldBe false
+            kafka.subscription() shouldBe emptySet()
+            kafka.closed() shouldBe true
+        }
+
+        test("slutter å konsumere og lukker Kafka-klienten når pod blir leder") {
+            val kafka = MockConsumer<String, String>("earliest")
+            val erLeder = AtomicBoolean(false)
+
+            coroutineScope {
+                val job = launch(Dispatchers.IO) { sisConsumer(kafka, leaderConfig = { erLeder.get() }).kjoer() }
+                try {
+                    withTimeout(5.seconds) {
+                        while (kafka.subscription() != setOf(topic)) yield()
+                        erLeder.set(true)
+                        job.join()
                     }
                 } finally {
                     job.cancelAndJoin()

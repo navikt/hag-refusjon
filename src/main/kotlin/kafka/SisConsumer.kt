@@ -11,6 +11,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.nav.hag.utils.bakgrunnsjobb.BakgrunnsjobbService
+import no.nav.hag.utils.bakgrunnsjobb.LeaderConfig
 import no.nav.helsearbeidsgiver.bakgrunnsjobb.ArbeidstakerVedtakJobb
 import no.nav.helsearbeidsgiver.helsesjekker.ShutDownAppState
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
@@ -23,6 +24,8 @@ import org.apache.kafka.clients.consumer.Consumer
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 class SisConsumer(
     private val consumer: Consumer<String, String>,
@@ -31,13 +34,29 @@ class SisConsumer(
     private val arbeidstakerVedtakRepository: ArbeidstakerVedtakRepository,
     private val bakgrunnsjobbService: BakgrunnsjobbService,
     private val db: Database,
+    private val leaderConfig: LeaderConfig,
+    private val lederSjekkIntervall: kotlin.time.Duration = 30.seconds,
 ) {
+    private val logger = logger()
     private val sikkerLogger = sikkerLogger()
 
+    // Leder-podden konsumerer ikke, slik at den fortsatt kan servere API og kjøre bakgrunnsjobber dersom konsumering feiler.
     suspend fun kjoer() {
         try {
+            if (leaderConfig.isElectedLeader()) {
+                logger.info("Pod er leder - konsumerer ikke $topic")
+                return
+            }
             consumer.subscribe(listOf(topic))
-            while (currentCoroutineContext().isActive) poll()
+            while (currentCoroutineContext().isActive) {
+                val nesteLederSjekk = TimeSource.Monotonic.markNow() + lederSjekkIntervall
+                while (currentCoroutineContext().isActive && !nesteLederSjekk.hasPassedNow()) poll()
+                // Nais-leder er leder livet ut, så en pod som har blitt leder trenger ikke å konsumere igjen.
+                if (leaderConfig.isElectedLeader()) {
+                    logger.info("Pod er valgt til leder - slutter å konsumere $topic")
+                    return
+                }
+            }
         } finally {
             consumer.close(CloseOptions.timeout(Duration.ofSeconds(10)))
         }
