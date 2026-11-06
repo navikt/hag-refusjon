@@ -39,6 +39,7 @@ import no.nav.helsearbeidsgiver.refusjon.pdfRoutes
 import no.nav.helsearbeidsgiver.refusjon.vedtakRoutes
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravRepository
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
+import no.nav.helsearbeidsgiver.utils.NaisLeaderConfig
 import no.nav.helsearbeidsgiver.utils.cache.LocalCache
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.pipe.orDefault
@@ -116,7 +117,11 @@ fun main() {
                 refusjonUtfallRepository = RefusjonUtfallRepository(database.database),
             )
 
-        val bakgrunnsjobbService = BakgrunnsjobbService(ExposedBakgrunnsjobRepository(database.database))
+        val bakgrunnsjobbService =
+            BakgrunnsjobbService(
+                bakgrunnsjobbRepository = ExposedBakgrunnsjobRepository(database.database),
+                leaderConfig = NaisLeaderConfig,
+            )
         bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb(vedtakService))
         bakgrunnsjobbService.startAsync(retryOnFail = true)
 
@@ -139,6 +144,7 @@ fun main() {
                 arbeidstakerVedtakRepository = arbeidstakerVedtakRepository,
                 bakgrunnsjobbService = bakgrunnsjobbService,
                 db = database.database,
+                leaderConfig = NaisLeaderConfig,
             )
 
         val vedtakMottak = VedtakMottak(arbeidstakerVedtakRepository, bakgrunnsjobbService, database.database)
