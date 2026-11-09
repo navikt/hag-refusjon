@@ -3,6 +3,8 @@ package no.nav.helsearbeidsgiver.refusjon
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
+import no.nav.helsearbeidsgiver.domene.inntektsmelding.v1.Refusjon
+import no.nav.helsearbeidsgiver.refusjonskrav.InntektsmeldingRefusjonskrav
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
@@ -40,9 +42,8 @@ class RefusjonUtfallMapperTest :
                     sykmeldtNavn = "Ola Nordmann",
                     arbeidsgiverNavn = "Arbeidsgiver AS",
                     daggrupper = emptyList(),
-                    beloepForventetRefusjon = 0,
+                    refusjonskrav = null,
                     beloepUtbetaltTilArbeidsgiver = 0,
-                    dagerIgjenMedRettTilSykepenger = DAGER_IGJEN_MED_RETT_TIL_SYKEPENGER,
                     arbeidstakerVedtakMelding = melding,
                 )
         }
@@ -61,7 +62,7 @@ class RefusjonUtfallMapperTest :
             }
         }
 
-        test("grupperer dagene og summerer beløpene fra daggruppene") {
+        test("grupperer dagene og summerer beløp utbetalt til arbeidsgiver fra daggruppene") {
             val melding =
                 arbeidstakerVedtakMeldingMock(fnr, orgnr).copy(
                     utbetalingsdager =
@@ -79,7 +80,6 @@ class RefusjonUtfallMapperTest :
 
             val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
 
-            refusjonUtfall.beloepForventetRefusjon shouldBe 2000
             refusjonUtfall.beloepUtbetaltTilArbeidsgiver shouldBe 2000
             refusjonUtfall.daggrupper shouldBe
                 listOf(
@@ -87,28 +87,52 @@ class RefusjonUtfallMapperTest :
                         antallDager = 2,
                         sykepengeStatus = SykepengeStatus.RETT_TIL_SYKEPENGER,
                         sykdomsgrad = 100,
-                        beloepKrevdRefusjonPerDag = 1000,
-                        beloepKrevdRefusjonPerMaaned = null,
-                        beloepForventetRefusjon = 2000,
+                        beloepUtbetaltTilArbeidsgiverPerDag = 1000,
                         beloepUtbetaltTilArbeidsgiver = 2000,
-                        begrensetTilSeksG = false,
                     ),
                 )
         }
 
-        test("bruker anvendt 6G fra vedtaket") {
-            // 1 000 kr per dag × 260 = 260 000 kr per år, som er over en anvendt 6G på 200 000 kr
+        test("bygger refusjonskravet fra inntektsmeldingene dagene peker på") {
+            val annenImId = UUID.randomUUID().toKotlinUuid()
             val melding =
                 arbeidstakerVedtakMeldingMock(fnr, orgnr).copy(
-                    anvendtSeksG = 200000.0,
-                    utbetalingsdager = listOf(utbetalingsdagMock(hagInntektsmeldingReferanse = null)),
+                    utbetalingsdager =
+                        listOf(
+                            utbetalingsdag(LocalDate.of(2026, 7, 30), null),
+                            utbetalingsdag(LocalDate.of(2026, 7, 31), imId),
+                            utbetalingsdag(LocalDate.of(2026, 8, 3), annenImId),
+                        ),
+                )
+            val refusjonskrav =
+                listOf(
+                    InntektsmeldingRefusjonskrav(imId, Refusjon(beloepPerMaaned = 26000.0, endringer = emptyList())),
+                    InntektsmeldingRefusjonskrav(annenImId, Refusjon(beloepPerMaaned = 13000.0, endringer = emptyList())),
                 )
 
+            val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, refusjonskrav, "Arbeidsgiver AS", "Ola Nordmann")
+
+            refusjonUtfall.refusjonskrav shouldBe
+                Refusjonskrav(
+                    beloepPerMaaned = 26000.0,
+                    endringer = listOf(RefusjonskravEndring(startdato = LocalDate.of(2026, 8, 3), beloep = 13000.0)),
+                )
+        }
+
+        test("bruker anvendt 6G fra vedtaket") {
+            // 26 000 kr per måned × 12 = 312 000 kr per år, som begrenses til en anvendt 6G på 260 000 kr (1 000 kr per dag)
+            val melding =
+                arbeidstakerVedtakMeldingMock(fnr, orgnr).copy(
+                    anvendtSeksG = 260000.0,
+                    utbetalingsdager = listOf(utbetalingsdag(LocalDate.of(2026, 7, 28))),
+                )
+            val refusjonskrav = listOf(InntektsmeldingRefusjonskrav(imId, Refusjon(beloepPerMaaned = 26000.0, endringer = emptyList())))
+
             melding
-                .tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+                .tilRefusjonUtfall(refusjonUtfallId, refusjonskrav, "Arbeidsgiver AS", "Ola Nordmann")
                 .daggrupper
                 .single()
-                .begrensetTilSeksG shouldBe true
+                .sykepengeStatus shouldBe SykepengeStatus.RETT_TIL_SYKEPENGER
         }
 
         test("henter distinkte inntektsmeldingreferanser fra utbetalingsdagene") {

@@ -12,24 +12,7 @@ class RefusjonsberegningTest :
     FunSpec({
         context("refusjonskravPerAar") {
             test("ganger refusjonskrav per måned med 12") {
-                refusjonskravPerAar(refusjonskravPerMaaned = 26000.5, refusjonskravPerDag = 1000) shouldBeEqualComparingTo
-                    BigDecimal("312006")
-            }
-
-            test("bruker refusjonskrav per dag ganger 260 når refusjonskrav per måned mangler") {
-                refusjonskravPerAar(refusjonskravPerMaaned = null, refusjonskravPerDag = 1200) shouldBeEqualComparingTo
-                    BigDecimal("312000")
-            }
-        }
-
-        context("erBegrensetTilSeksG") {
-            withData(
-                nameFn = { (krav, forventet) -> "refusjonskrav $krav gir $forventet" },
-                "819295" to true,
-                "819294" to false,
-                "819293.99" to false,
-            ) { (krav, forventet) ->
-                erBegrensetTilSeksG(BigDecimal(krav), ANVENDT_6G) shouldBe forventet
+                refusjonskravPerAar(refusjonskravPerMaaned = 26000.5) shouldBeEqualComparingTo BigDecimal("312006")
             }
         }
 
@@ -65,29 +48,19 @@ class RefusjonsberegningTest :
             }
         }
 
-        context("erDifferanseIRefusjon") {
+        context("erUtbetaltLavereEnnForventet") {
             withData(
                 nameFn = { (faktisk, forventetResultat) -> "faktisk $faktisk mot forventet 1200 gir $forventetResultat" },
                 "1200" to false,
                 "1199" to false,
                 "1201" to false,
+                "1201.01" to false,
+                "2400" to false,
                 "1198.99" to true,
-                "1201.01" to true,
+                "0" to true,
             ) { (faktisk, forventetResultat) ->
-                erDifferanseIRefusjon(forventetRefusjon = BigDecimal("1200"), faktiskRefusjon = BigDecimal(faktisk)) shouldBe
+                erUtbetaltLavereEnnForventet(forventetRefusjon = BigDecimal("1200"), faktiskRefusjon = BigDecimal(faktisk)) shouldBe
                     forventetResultat
-            }
-        }
-
-        context("tilHeleKroner") {
-            withData(
-                nameFn = { (beloep, forventet) -> "$beloep blir $forventet" },
-                "3151.13" to 3151,
-                "1200.49" to 1200,
-                "1200.5" to 1201,
-                "1200" to 1200,
-            ) { (beloep, forventet) ->
-                BigDecimal(beloep).tilHeleKroner() shouldBe forventet
             }
         }
     })

@@ -23,9 +23,9 @@ data class RefusjonUtfallPdfData(
     val fom: LocalDate,
     val tom: LocalDate,
     val daggrupper: List<Daggruppe>,
-    val beloepForventetRefusjon: Int,
+    val refusjonskrav: Refusjonskrav?,
     val beloepUtbetaltTilArbeidsgiver: Int,
-    val dagerIgjenMedRettTilSykepenger: Int,
+    val utbetalingKanVaereLavereEnnForventet: Boolean,
     val arbeidstakervedtakFattetTidspunkt: LocalDateTime,
 )
 
@@ -39,8 +39,8 @@ fun RefusjonUtfall.tilRefusjonUtfallPdfData(): RefusjonUtfallPdfData =
         fom = fom,
         tom = tom,
         daggrupper = daggrupper,
-        beloepForventetRefusjon = beloepForventetRefusjon,
+        refusjonskrav = refusjonskrav,
         beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
-        dagerIgjenMedRettTilSykepenger = dagerIgjenMedRettTilSykepenger,
+        utbetalingKanVaereLavereEnnForventet = daggrupper.any { it.sykepengeStatus == SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE },
         arbeidstakervedtakFattetTidspunkt = arbeidstakervedtakFattetTidspunkt,
     )

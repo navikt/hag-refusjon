@@ -6,9 +6,13 @@ import io.kotest.datatest.withData
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import no.nav.helsearbeidsgiver.domene.inntektsmelding.v1.Refusjon
 import java.math.RoundingMode
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.util.UUID
+import kotlin.uuid.Uuid
+import kotlin.uuid.toKotlinUuid
 
 private const val MAANEDER_PER_AAR = 12
 private const val VIRKEDAGER_PER_AAR = 260
@@ -19,6 +23,30 @@ private val DAGSATS = (REFUSJONSKRAV_PER_MAANED * MAANEDER_PER_AAR / VIRKEDAGER_
 private const val REFUSJONSKRAV_OVER_6G_PER_MAANED = 80000.0
 private val DAGSATS_6G = ANVENDT_6G.divide(VIRKEDAGER_PER_AAR.toBigDecimal(), 0, RoundingMode.DOWN).toInt()
 
+private val IM_ID = UUID.randomUUID().toKotlinUuid()
+private val IM_ID_OVER_6G = UUID.randomUUID().toKotlinUuid()
+private val IM_ID_UTEN_KRAV = UUID.randomUUID().toKotlinUuid()
+
+private val REFUSJONSKRAV: Map<Uuid, Refusjon?> =
+    mapOf(
+        IM_ID to Refusjon(beloepPerMaaned = REFUSJONSKRAV_PER_MAANED, endringer = emptyList()),
+        IM_ID_OVER_6G to Refusjon(beloepPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED, endringer = emptyList()),
+        IM_ID_UTEN_KRAV to null,
+    )
+
+private val DAGTYPER_UTENFOR_DAGGRUPPER =
+    listOf(
+        Utbetalingsdagtype.NAV_HELG_DAG,
+        Utbetalingsdagtype.FRIDAG,
+        Utbetalingsdagtype.FERIEDAG,
+        Utbetalingsdagtype.PERMISJONSDAG,
+        Utbetalingsdagtype.ARBEIDSDAG,
+        Utbetalingsdagtype.VENTETIDSDAG,
+        Utbetalingsdagtype.ARBEID_IKKE_GJENOPPTATT_DAG,
+        Utbetalingsdagtype.ANDRE_YTELSER,
+        Utbetalingsdagtype.UKJENT_DAG,
+    )
+
 class DaggruppeMapperTest :
     FunSpec({
         context("daggrupper") {
@@ -26,34 +54,38 @@ class DaggruppeMapperTest :
                 daggrupper().shouldBeEmpty()
             }
 
-            context("tar bare med dager med eller uten rett til sykepenger") {
+            test("Nav-dager har rett til sykepenger") {
+                daggrupper(dag(august(3))).map { it.sykepengeStatus } shouldBe listOf(SykepengeStatus.RETT_TIL_SYKEPENGER)
+            }
+
+            context("dager uten rett til sykepenger") {
+                withData(Utbetalingsdagtype.AVVIST_DAG, Utbetalingsdagtype.FORELDET_DAG) { type ->
+                    daggrupper(dag(august(3), type)).map { it.sykepengeStatus } shouldBe listOf(SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER)
+                }
+            }
+
+            context("tar ikke med dager utenfor daggruppene") {
+                withData(DAGTYPER_UTENFOR_DAGGRUPPER) { type ->
+                    daggrupper(dag(august(3), type)).shouldBeEmpty()
+                }
+            }
+
+            context("arbeidsgiverperiodedager er Nav-dager bare når Nav utbetaler til arbeidsgiver") {
                 withData(
-                    Dagtype.NAV_DAG to SykepengeStatus.RETT_TIL_SYKEPENGER,
-                    Dagtype.IKKE_RETT_PAA_SYKEPENGER to SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER,
-                    Dagtype.ARBEIDSGIVERPERIODE to null,
-                    Dagtype.HELG to null,
-                    Dagtype.FRI to null,
-                    Dagtype.FERIE to null,
-                    Dagtype.PERMISJON to null,
-                    Dagtype.ARBEIDSDAG to null,
-                    Dagtype.UKJENT to null,
-                ) { (dagtype, forventetStatus) ->
-                    daggrupper(dag(august(3), dagtype)).map { it.sykepengeStatus } shouldBe listOfNotNull(forventetStatus)
+                    nameFn = { (type, beloep, forventet) -> "$type med $beloep kr til arbeidsgiver gir $forventet" },
+                    Triple(Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG, DAGSATS, listOf(SykepengeStatus.RETT_TIL_SYKEPENGER)),
+                    Triple(Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG, 0, emptyList()),
+                    Triple(Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV, DAGSATS, listOf(SykepengeStatus.RETT_TIL_SYKEPENGER)),
+                    Triple(Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV, 0, emptyList()),
+                ) { (type, beloep, forventet) ->
+                    daggrupper(dag(august(3), type, beloepTilArbeidsgiver = beloep)).map { it.sykepengeStatus } shouldBe forventet
                 }
             }
 
             context("feiler ved utbetaling til arbeidsgiver på dager utenfor daggruppene") {
-                withData(
-                    Dagtype.ARBEIDSGIVERPERIODE,
-                    Dagtype.HELG,
-                    Dagtype.FRI,
-                    Dagtype.FERIE,
-                    Dagtype.PERMISJON,
-                    Dagtype.ARBEIDSDAG,
-                    Dagtype.UKJENT,
-                ) { dagtype ->
+                withData(DAGTYPER_UTENFOR_DAGGRUPPER) { type ->
                     shouldThrow<IllegalStateException> {
-                        daggrupper(dag(august(3), dagtype, beloepUtbetaltTilArbeidsgiver = 1))
+                        daggrupper(dag(august(3), type, beloepTilArbeidsgiver = 1))
                     }
                 }
             }
@@ -63,21 +95,20 @@ class DaggruppeMapperTest :
                     dag(august(3)),
                     dag(august(4)),
                     dag(august(5)),
-                ) shouldBe listOf(daggruppe(antallDager = 3, beloepUtbetaltTilArbeidsgiver = 3 * DAGSATS))
+                ) shouldBe listOf(daggruppe(antallDager = 3))
             }
 
             test("helg bryter ikke en daggruppe og telles ikke med i antall dager") {
                 val toUkerMedHelg =
                     (3..14).map { august(it) }.map { dato ->
                         if (dato.dayOfWeek in listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)) {
-                            dag(dato, Dagtype.HELG, beloepUtbetaltTilArbeidsgiver = 0)
+                            dag(dato, Utbetalingsdagtype.NAV_HELG_DAG)
                         } else {
                             dag(dato)
                         }
                     }
 
-                daggrupper(*toUkerMedHelg.toTypedArray()) shouldBe
-                    listOf(daggruppe(antallDager = 10, beloepUtbetaltTilArbeidsgiver = 10 * DAGSATS))
+                daggrupper(*toUkerMedHelg.toTypedArray()) shouldBe listOf(daggruppe(antallDager = 10))
             }
 
             test("sorterer dagene før de slås sammen") {
@@ -87,48 +118,26 @@ class DaggruppeMapperTest :
                     dag(august(5)),
                 ) shouldBe
                     listOf(
-                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = DAGSATS),
-                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = DAGSATS / 2, sykdomsgrad = 50),
-                        daggruppe(antallDager = 1, beloepUtbetaltTilArbeidsgiver = DAGSATS),
+                        daggruppe(antallDager = 1),
+                        daggruppe(antallDager = 1, sykdomsgrad = 50),
+                        daggruppe(antallDager = 1),
                     )
             }
 
-            test("summerer beløp utbetalt til arbeidsgiver i daggruppen") {
+            test("endret refusjonskrav bryter ikke en daggruppe når utbetalingen er lik") {
                 daggrupper(
-                    dag(august(3), beloepUtbetaltTilArbeidsgiver = DAGSATS),
-                    dag(august(4), beloepUtbetaltTilArbeidsgiver = DAGSATS - 1),
-                ) shouldBe listOf(daggruppe(antallDager = 2, beloepUtbetaltTilArbeidsgiver = 2 * DAGSATS - 1))
-            }
-
-            test("summerer forventet refusjon justert for sykdomsgrad, også for dager uten rett til sykepenger") {
-                daggrupper(
-                    dag(august(3), sykdomsgrad = 50),
-                    dag(august(4), sykdomsgrad = 50),
-                    dag(august(5), Dagtype.IKKE_RETT_PAA_SYKEPENGER, beloepUtbetaltTilArbeidsgiver = 0),
-                    dag(august(6), Dagtype.IKKE_RETT_PAA_SYKEPENGER, beloepUtbetaltTilArbeidsgiver = 0),
-                ).map { it.beloepForventetRefusjon } shouldBe listOf(2 * (DAGSATS / 2), 2 * DAGSATS)
-            }
-
-            test("forventet refusjon begrenses til 6G") {
-                fun dagOverSeksG(dato: LocalDate) =
-                    dag(dato, beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED, beloepUtbetaltTilArbeidsgiver = DAGSATS_6G)
-
-                daggrupper(dagOverSeksG(august(3)), dagOverSeksG(august(4))).single().beloepForventetRefusjon shouldBe 2 * DAGSATS_6G
+                    dag(august(3)),
+                    dag(august(4), imReferanse = null),
+                    dag(august(5), imReferanse = IM_ID_UTEN_KRAV),
+                ) shouldBe listOf(daggruppe(antallDager = 3))
             }
 
             context("starter ny daggruppe når") {
                 withData(
                     nameFn = { it.first },
-                    "status endres" to dag(august(4), Dagtype.IKKE_RETT_PAA_SYKEPENGER),
-                    "sykdomsgrad endres" to dag(august(4), sykdomsgrad = 50),
-                    "refusjonskrav per dag endres" to dag(august(4), beloepKrevdRefusjonPerDag = DAGSATS / 2),
-                    "refusjonskrav per måned endres" to
-                        dag(
-                            august(4),
-                            beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_PER_MAANED / 2,
-                            beloepUtbetaltTilArbeidsgiver = DAGSATS / 2,
-                        ),
-                    "utbetalingen avviker fra forventet" to dag(august(4), beloepUtbetaltTilArbeidsgiver = DAGSATS / 2),
+                    "status endres" to dag(august(4), Utbetalingsdagtype.AVVIST_DAG),
+                    "sykdomsgrad endres" to dag(august(4), sykdomsgrad = 50, beloepTilArbeidsgiver = DAGSATS),
+                    "beløp utbetalt per dag endres" to dag(august(4), beloepTilArbeidsgiver = DAGSATS + 10),
                 ) { (_, endretDag) ->
                     daggrupper(dag(august(3)), endretDag) shouldHaveSize 2
                 }
@@ -136,23 +145,13 @@ class DaggruppeMapperTest :
 
             test("grupperer dager uten rett til sykepenger etter samme regler") {
                 daggrupper(
-                    dag(august(3), Dagtype.IKKE_RETT_PAA_SYKEPENGER, sykdomsgrad = 10, beloepUtbetaltTilArbeidsgiver = 0),
-                    dag(august(4), Dagtype.IKKE_RETT_PAA_SYKEPENGER, sykdomsgrad = 10, beloepUtbetaltTilArbeidsgiver = 0),
-                    dag(august(5), Dagtype.IKKE_RETT_PAA_SYKEPENGER, sykdomsgrad = 15, beloepUtbetaltTilArbeidsgiver = 0),
+                    dag(august(3), Utbetalingsdagtype.AVVIST_DAG, sykdomsgrad = 10),
+                    dag(august(4), Utbetalingsdagtype.AVVIST_DAG, sykdomsgrad = 10),
+                    dag(august(5), Utbetalingsdagtype.AVVIST_DAG, sykdomsgrad = 15),
                 ) shouldBe
                     listOf(
-                        daggruppe(
-                            antallDager = 2,
-                            beloepUtbetaltTilArbeidsgiver = 0,
-                            status = SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER,
-                            sykdomsgrad = 10,
-                        ),
-                        daggruppe(
-                            antallDager = 1,
-                            beloepUtbetaltTilArbeidsgiver = 0,
-                            status = SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER,
-                            sykdomsgrad = 15,
-                        ),
+                        daggruppe(antallDager = 2, beloepPerDag = 0, status = SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER, sykdomsgrad = 10),
+                        daggruppe(antallDager = 1, beloepPerDag = 0, status = SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER, sykdomsgrad = 15),
                     )
             }
         }
@@ -163,90 +162,46 @@ class DaggruppeMapperTest :
                 DAGSATS to SykepengeStatus.RETT_TIL_SYKEPENGER,
                 DAGSATS - 1 to SykepengeStatus.RETT_TIL_SYKEPENGER,
                 DAGSATS + 1 to SykepengeStatus.RETT_TIL_SYKEPENGER,
+                DAGSATS + 2 to SykepengeStatus.RETT_TIL_SYKEPENGER,
+                DAGSATS * 2 to SykepengeStatus.RETT_TIL_SYKEPENGER,
                 DAGSATS - 2 to SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE,
-                DAGSATS + 2 to SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE,
             ) { (utbetalt, forventetStatus) ->
-                daggrupper(dag(august(3), beloepUtbetaltTilArbeidsgiver = utbetalt)).single().sykepengeStatus shouldBe forventetStatus
+                daggrupper(dag(august(3), beloepTilArbeidsgiver = utbetalt)).single().sykepengeStatus shouldBe forventetStatus
             }
 
             test("tar høyde for sykdomsgrad i forventet refusjon") {
                 daggrupper(
-                    dag(august(3), sykdomsgrad = 50, beloepUtbetaltTilArbeidsgiver = DAGSATS / 2),
-                    dag(august(4), sykdomsgrad = 50, beloepUtbetaltTilArbeidsgiver = DAGSATS / 2 - 2),
+                    dag(august(3), sykdomsgrad = 50, beloepTilArbeidsgiver = DAGSATS / 2),
+                    dag(august(4), sykdomsgrad = 50, beloepTilArbeidsgiver = DAGSATS / 2 - 2),
                 ).map { it.sykepengeStatus } shouldBe
                     listOf(SykepengeStatus.RETT_TIL_SYKEPENGER, SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE)
             }
 
-            test("bruker refusjonskrav per dag fra sis når refusjonskrav per måned mangler") {
-                fun dagUtenKravPerMaaned(
-                    dato: LocalDate,
-                    utbetalt: Int,
-                ) = dag(
-                    dato,
-                    beloepKrevdRefusjonPerDag = 1000,
-                    beloepKrevdRefusjonPerMaaned = null,
-                    beloepUtbetaltTilArbeidsgiver = utbetalt,
-                )
+            context("refusjonskrav over 6G") {
+                test("utbetalt 6G-dagsats gir ikke differanse") {
+                    daggrupper(dag(august(3), beloepTilArbeidsgiver = DAGSATS_6G, imReferanse = IM_ID_OVER_6G))
+                        .single()
+                        .sykepengeStatus shouldBe SykepengeStatus.RETT_TIL_SYKEPENGER
+                }
 
-                daggrupper(
-                    dagUtenKravPerMaaned(august(3), utbetalt = 1000),
-                    dagUtenKravPerMaaned(august(4), utbetalt = 900),
-                ).map { it.sykepengeStatus } shouldBe
-                    listOf(SykepengeStatus.RETT_TIL_SYKEPENGER, SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE)
+                test("utbetaling lavere enn 6G-dagsatsen gir differanse") {
+                    daggrupper(dag(august(3), beloepTilArbeidsgiver = DAGSATS_6G - 2, imReferanse = IM_ID_OVER_6G))
+                        .single()
+                        .sykepengeStatus shouldBe SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE
+                }
             }
 
-            test("dager uten rett til sykepenger vurderes ikke for differanse i refusjon eller 6G") {
-                daggrupper(
-                    dag(
-                        august(3),
-                        Dagtype.IKKE_RETT_PAA_SYKEPENGER,
-                        beloepUtbetaltTilArbeidsgiver = 0,
-                        beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED,
-                    ),
-                ).single() shouldBe
-                    daggruppe(
-                        antallDager = 1,
-                        beloepUtbetaltTilArbeidsgiver = 0,
-                        status = SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER,
-                        beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED,
-                        beloepForventetRefusjon = DAGSATS_6G,
-                        begrensetTilSeksG = false,
-                    )
-            }
-        }
-
-        context("begrensetTilSeksG") {
-            fun dagOverSeksG(utbetalt: Int) =
-                dag(august(3), beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED, beloepUtbetaltTilArbeidsgiver = utbetalt)
-
-            test("refusjonskrav over 6G er begrenset, og utbetalt 6G-dagsats gir ikke differanse") {
-                daggrupper(dagOverSeksG(utbetalt = DAGSATS_6G)).single() shouldBe
-                    daggruppe(
-                        antallDager = 1,
-                        beloepUtbetaltTilArbeidsgiver = DAGSATS_6G,
-                        beloepKrevdRefusjonPerMaaned = REFUSJONSKRAV_OVER_6G_PER_MAANED,
-                        beloepForventetRefusjon = DAGSATS_6G,
-                        begrensetTilSeksG = true,
-                    )
-            }
-
-            test("refusjonskrav over 6G gir differanse når utbetalingen avviker fra 6G-dagsatsen") {
-                daggrupper(dagOverSeksG(utbetalt = DAGSATS_6G - 2)).single().sykepengeStatus shouldBe
-                    SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE
-            }
-
-            test("refusjonskrav på nøyaktig 6G er ikke begrenset") {
-                daggrupper(
-                    dag(
-                        august(3),
-                        beloepKrevdRefusjonPerMaaned = ANVENDT_6G.toDouble() / MAANEDER_PER_AAR,
-                        beloepUtbetaltTilArbeidsgiver = DAGSATS_6G,
-                    ),
-                ).single().begrensetTilSeksG shouldBe false
-            }
-
-            test("refusjonskrav under 6G er ikke begrenset") {
-                daggrupper(dag(august(3))).single().begrensetTilSeksG shouldBe false
+            context("gir aldri differanse uten refusjonskrav fra inntektsmelding") {
+                withData(
+                    nameFn = { it.first },
+                    "dagen mangler referanse til inntektsmelding" to null,
+                    "inntektsmeldingen finnes ikke blant refusjonskravene" to UUID.randomUUID().toKotlinUuid(),
+                    "inntektsmeldingen har ikke refusjonskrav" to IM_ID_UTEN_KRAV,
+                ) { (_, imReferanse) ->
+                    daggrupper(dag(august(3), beloepTilArbeidsgiver = 1, imReferanse = imReferanse))
+                        .single()
+                        .sykepengeStatus shouldBe SykepengeStatus.RETT_TIL_SYKEPENGER
+                }
             }
         }
     })
@@ -255,40 +210,31 @@ private fun august(dag: Int): LocalDate = LocalDate.of(2026, 8, dag)
 
 private fun dag(
     dato: LocalDate,
-    dagtype: Dagtype = Dagtype.NAV_DAG,
+    type: Utbetalingsdagtype = Utbetalingsdagtype.NAV_DAG,
     sykdomsgrad: Int = 100,
-    beloepUtbetaltTilArbeidsgiver: Int = if (dagtype == Dagtype.NAV_DAG) DAGSATS * sykdomsgrad / 100 else 0,
-    beloepKrevdRefusjonPerDag: Int = DAGSATS,
-    beloepKrevdRefusjonPerMaaned: Double? = REFUSJONSKRAV_PER_MAANED,
-): Dag =
-    Dag(
+    beloepTilArbeidsgiver: Int = if (type == Utbetalingsdagtype.NAV_DAG) DAGSATS * sykdomsgrad / 100 else 0,
+    imReferanse: Uuid? = IM_ID,
+): Utbetalingsdag =
+    utbetalingsdagMock(
         dato = dato,
-        dagtype = dagtype,
+        type = type,
         sykdomsgrad = sykdomsgrad,
-        beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
-        beloepKrevdRefusjonPerDag = beloepKrevdRefusjonPerDag,
-        beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
+        beloepTilArbeidsgiver = beloepTilArbeidsgiver,
+        hagInntektsmeldingReferanse = imReferanse,
     )
 
 private fun daggruppe(
     antallDager: Int,
-    beloepUtbetaltTilArbeidsgiver: Int,
     status: SykepengeStatus = SykepengeStatus.RETT_TIL_SYKEPENGER,
     sykdomsgrad: Int = 100,
-    beloepKrevdRefusjonPerDag: Int = DAGSATS,
-    beloepKrevdRefusjonPerMaaned: Double? = REFUSJONSKRAV_PER_MAANED,
-    beloepForventetRefusjon: Int = antallDager * DAGSATS * sykdomsgrad / 100,
-    begrensetTilSeksG: Boolean = false,
+    beloepPerDag: Int = DAGSATS * sykdomsgrad / 100,
 ): Daggruppe =
     Daggruppe(
         antallDager = antallDager,
         sykepengeStatus = status,
         sykdomsgrad = sykdomsgrad,
-        beloepKrevdRefusjonPerDag = beloepKrevdRefusjonPerDag,
-        beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
-        beloepForventetRefusjon = beloepForventetRefusjon,
-        beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
-        begrensetTilSeksG = begrensetTilSeksG,
+        beloepUtbetaltTilArbeidsgiverPerDag = beloepPerDag,
+        beloepUtbetaltTilArbeidsgiver = antallDager * beloepPerDag,
     )
 
-private fun daggrupper(vararg dager: Dag): List<Daggruppe> = dager.toList().tilDaggrupper(ANVENDT_6G)
+private fun daggrupper(vararg dager: Utbetalingsdag): List<Daggruppe> = dager.toList().tilDaggrupper(REFUSJONSKRAV, ANVENDT_6G)
