@@ -2,25 +2,13 @@ package no.nav.helsearbeidsgiver.refusjon
 
 import java.math.BigDecimal
 import java.math.MathContext
-import java.math.RoundingMode
 
 private val MAANEDER_PER_AAR = BigDecimal("12")
 private val VIRKEDAGER_PER_AAR = BigDecimal("260")
 private val HUNDRE_PROSENT = BigDecimal("100")
 private val AVRUNDINGSTOLERANSE = BigDecimal.ONE
 
-// Refusjonskravet fra inntektsmeldingen er førstevalg. Mangler det, brukes kravet per dag fra sis.
-fun refusjonskravPerAar(
-    refusjonskravPerMaaned: Double?,
-    refusjonskravPerDag: Int,
-): BigDecimal =
-    refusjonskravPerMaaned?.toBigDecimal()?.multiply(MAANEDER_PER_AAR)
-        ?: refusjonskravPerDag.toBigDecimal().multiply(VIRKEDAGER_PER_AAR)
-
-fun erBegrensetTilSeksG(
-    refusjonskravPerAar: BigDecimal,
-    anvendtSeksG: BigDecimal,
-): Boolean = refusjonskravPerAar > anvendtSeksG
+fun refusjonskravPerAar(refusjonskravPerMaaned: Double): BigDecimal = refusjonskravPerMaaned.toBigDecimal().multiply(MAANEDER_PER_AAR)
 
 fun forventetRefusjonPerDag(
     refusjonskravPerAar: BigDecimal,
@@ -37,9 +25,7 @@ fun forventetRefusjonPerDag(
         .divide(VIRKEDAGER_PER_AAR * HUNDRE_PROSENT, MathContext.DECIMAL128)
 }
 
-fun BigDecimal.tilHeleKroner(): Int = setScale(0, RoundingMode.HALF_UP).toInt()
-
-fun erDifferanseIRefusjon(
+fun erUtbetaltLavereEnnForventet(
     forventetRefusjon: BigDecimal,
     faktiskRefusjon: BigDecimal,
-): Boolean = (faktiskRefusjon - forventetRefusjon).abs() > AVRUNDINGSTOLERANSE
+): Boolean = forventetRefusjon - faktiskRefusjon > AVRUNDINGSTOLERANSE

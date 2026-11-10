@@ -1,12 +1,17 @@
 package no.nav.helsearbeidsgiver.refusjon
 
+import no.nav.helsearbeidsgiver.domene.inntektsmelding.v1.Refusjon
 import java.math.BigDecimal
+import kotlin.uuid.Uuid
 
-// Påfølgende dager med lik status, sykdomsgrad, refusjonskrav og 6G-begrensning slås sammen til én daggruppe.
+// Påfølgende dager med lik status, sykdomsgrad og beløp utbetalt per dag slås sammen til én daggruppe.
 // Dager som er filtrert bort (f.eks. helg) bryter ikke en daggruppe.
-fun List<Dag>.tilDaggrupper(anvendtSeksG: BigDecimal): List<Daggruppe> =
+fun List<Utbetalingsdag>.tilDaggrupper(
+    refusjonskravPerInntektsmelding: Map<Uuid, Refusjon?>,
+    anvendtSeksG: BigDecimal,
+): List<Daggruppe> =
     sortedBy { it.dato }
-        .mapNotNull { it.tilDaggruppe(anvendtSeksG) }
+        .mapNotNull { it.tilDaggruppe(refusjonskravPerInntektsmelding, anvendtSeksG) }
         .fold(emptyList()) { daggrupper, neste ->
             val forrige = daggrupper.lastOrNull()
             if (forrige != null && forrige.kanSlaasSammenMed(neste)) {
@@ -16,16 +21,16 @@ fun List<Dag>.tilDaggrupper(anvendtSeksG: BigDecimal): List<Daggruppe> =
             }
         }
 
-private fun Dag.tilDaggruppe(anvendtSeksG: BigDecimal): Daggruppe? {
-    val refusjonskravPerAar =
-        refusjonskravPerAar(beloepKrevdRefusjonPerMaaned, beloepKrevdRefusjonPerDag)
-    val forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar, anvendtSeksG, sykdomsgrad)
-    val sykepengeStatus = tilSykepengeStatus(forventetRefusjon)
+private fun Utbetalingsdag.tilDaggruppe(
+    refusjonskravPerInntektsmelding: Map<Uuid, Refusjon?>,
+    anvendtSeksG: BigDecimal,
+): Daggruppe? {
+    val sykepengeStatus = tilSykepengeStatus(refusjonskravPerMaaned(refusjonskravPerInntektsmelding), anvendtSeksG)
 
     // Dager utenfor daggruppene skal ikke ha utbetaling til arbeidsgiver
     if (sykepengeStatus == null) {
-        check(beloepUtbetaltTilArbeidsgiver == 0) {
-            "Fant utbetaling til arbeidsgiver på $dato med dagtype $dagtype. Dette er ikke forventet og vi feiler derfor refusjonsberegningen."
+        check(beloepTilArbeidsgiver == 0) {
+            "Fant utbetaling til arbeidsgiver på $dato med dagtype $type. Dette er ikke forventet og vi feiler derfor refusjonsberegningen."
         }
         return null
     }
@@ -34,51 +39,70 @@ private fun Dag.tilDaggruppe(anvendtSeksG: BigDecimal): Daggruppe? {
         antallDager = 1,
         sykepengeStatus = sykepengeStatus,
         sykdomsgrad = sykdomsgrad,
-        beloepKrevdRefusjonPerDag = beloepKrevdRefusjonPerDag,
-        beloepKrevdRefusjonPerMaaned = beloepKrevdRefusjonPerMaaned,
-        beloepForventetRefusjon = forventetRefusjon.tilHeleKroner(),
-        beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
-        begrensetTilSeksG =
-            sykepengeStatus != SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER && erBegrensetTilSeksG(refusjonskravPerAar, anvendtSeksG),
+        beloepUtbetaltTilArbeidsgiverPerDag = beloepTilArbeidsgiver,
+        beloepUtbetaltTilArbeidsgiver = beloepTilArbeidsgiver,
     )
 }
 
-private fun Dag.tilSykepengeStatus(forventetRefusjon: BigDecimal): SykepengeStatus? =
-    when (dagtype) {
-        Dagtype.NAV_DAG -> {
-            if (erDifferanseIRefusjon(forventetRefusjon, beloepUtbetaltTilArbeidsgiver.toBigDecimal())) {
-                SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE
-            } else {
-                SykepengeStatus.RETT_TIL_SYKEPENGER
-            }
+private fun Utbetalingsdag.tilSykepengeStatus(
+    refusjonskravPerMaaned: Double?,
+    anvendtSeksG: BigDecimal,
+): SykepengeStatus? =
+    when (type) {
+        Utbetalingsdagtype.NAV_DAG -> {
+            tilStatusMedRettTilSykepenger(refusjonskravPerMaaned, anvendtSeksG)
         }
 
-        Dagtype.IKKE_RETT_PAA_SYKEPENGER -> {
+        // Spleis slår sammen de to arbeidsgiverperiodetypene, så beloepTilArbeidsgiver avgjør om Nav dekker dagen.
+        Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG,
+        Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV,
+        -> {
+            if (beloepTilArbeidsgiver > 0) tilStatusMedRettTilSykepenger(refusjonskravPerMaaned, anvendtSeksG) else null
+        }
+
+        Utbetalingsdagtype.AVVIST_DAG,
+        Utbetalingsdagtype.FORELDET_DAG,
+        -> {
             SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER
         }
 
-        Dagtype.ARBEIDSGIVERPERIODE,
-        Dagtype.HELG,
-        Dagtype.FRI,
-        Dagtype.FERIE,
-        Dagtype.PERMISJON,
-        Dagtype.ARBEIDSDAG,
-        Dagtype.UKJENT,
+        Utbetalingsdagtype.NAV_HELG_DAG,
+        Utbetalingsdagtype.FRIDAG,
+        Utbetalingsdagtype.FERIEDAG,
+        Utbetalingsdagtype.PERMISJONSDAG,
+        Utbetalingsdagtype.ARBEIDSDAG,
+        Utbetalingsdagtype.VENTETIDSDAG,
+        Utbetalingsdagtype.ARBEID_IKKE_GJENOPPTATT_DAG,
+        Utbetalingsdagtype.ANDRE_YTELSER,
+        Utbetalingsdagtype.UKJENT_DAG,
         -> {
             null
         }
     }
 
+// Uten refusjonskrav fra inntektsmelding har vi ikke noe forventet beløp å sammenligne med.
+private fun Utbetalingsdag.tilStatusMedRettTilSykepenger(
+    refusjonskravPerMaaned: Double?,
+    anvendtSeksG: BigDecimal,
+): SykepengeStatus {
+    if (refusjonskravPerMaaned == null) return SykepengeStatus.RETT_TIL_SYKEPENGER
+
+    val forventetRefusjon = forventetRefusjonPerDag(refusjonskravPerAar(refusjonskravPerMaaned), anvendtSeksG, sykdomsgrad)
+
+    return if (erUtbetaltLavereEnnForventet(forventetRefusjon, beloepTilArbeidsgiver.toBigDecimal())) {
+        SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE
+    } else {
+        SykepengeStatus.RETT_TIL_SYKEPENGER
+    }
+}
+
 private fun Daggruppe.kanSlaasSammenMed(neste: Daggruppe): Boolean =
     sykepengeStatus == neste.sykepengeStatus &&
         sykdomsgrad == neste.sykdomsgrad &&
-        beloepKrevdRefusjonPerDag == neste.beloepKrevdRefusjonPerDag &&
-        beloepKrevdRefusjonPerMaaned == neste.beloepKrevdRefusjonPerMaaned &&
-        begrensetTilSeksG == neste.begrensetTilSeksG
+        beloepUtbetaltTilArbeidsgiverPerDag == neste.beloepUtbetaltTilArbeidsgiverPerDag
 
 private fun Daggruppe.slaaSammenMed(neste: Daggruppe): Daggruppe =
     copy(
         antallDager = antallDager + neste.antallDager,
-        beloepForventetRefusjon = beloepForventetRefusjon + neste.beloepForventetRefusjon,
         beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver + neste.beloepUtbetaltTilArbeidsgiver,
     )

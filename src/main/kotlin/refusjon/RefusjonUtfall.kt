@@ -28,11 +28,10 @@ data class RefusjonUtfall(
     val sykmeldtNavn: String,
     val arbeidsgiverNavn: String,
     val daggrupper: List<Daggruppe>,
-    // Summen av beloepForventetRefusjon i daggruppene. Begrenset til 6G og justert for sykdomsgrad.
-    val beloepForventetRefusjon: Int,
+    // Null hvis ingen av dagene peker på en inntektsmelding med refusjonskrav.
+    val refusjonskrav: Refusjonskrav?,
     // Summen av beloepUtbetaltTilArbeidsgiver i daggruppene. Beregnet av Spleis, som begrenser til 6G og justerer for sykdomsgrad.
     val beloepUtbetaltTilArbeidsgiver: Int,
-    val dagerIgjenMedRettTilSykepenger: Int,
     val arbeidstakerVedtakMelding: ArbeidstakerVedtakMelding,
 )
 
