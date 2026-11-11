@@ -24,7 +24,6 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
         fom = fom,
         tom = tom,
         sykepengegrunnlag = sykepengegrunnlag,
-        utfallTilArbeidsgiver = Utfall.INNVILGELSE,
         arbeidstakervedtakFattetTidspunkt = vedtakFattetTidspunkt,
         sykmeldtNavn = sykmeldtNavn,
         arbeidsgiverNavn = arbeidsgiverNavn,

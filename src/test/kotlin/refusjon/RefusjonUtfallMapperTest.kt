@@ -38,7 +38,6 @@ class RefusjonUtfallMapperTest :
                     fom = melding.fom,
                     tom = melding.tom,
                     sykepengegrunnlag = melding.sykepengegrunnlag,
-                    utfallTilArbeidsgiver = Utfall.INNVILGELSE,
                     arbeidstakervedtakFattetTidspunkt = melding.vedtakFattetTidspunkt,
                     sykmeldtNavn = "Ola Nordmann",
                     arbeidsgiverNavn = "Arbeidsgiver AS",
@@ -47,20 +46,6 @@ class RefusjonUtfallMapperTest :
                     beloepUtbetaltTilArbeidsgiver = 0,
                     arbeidstakerVedtakMelding = melding,
                 )
-        }
-
-        context("utfall til arbeidsgiver er alltid innvilgelse") {
-            withData(VedtaksUtfall.entries) { vedtaksUtfall ->
-                val refusjonUtfall =
-                    arbeidstakerVedtakMeldingMock(fnr, orgnr)
-                        .copy(vedtaksUtfallTilArbeidsgiver = vedtaksUtfall)
-                        .tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
-
-                @Suppress("DEPRECATION")
-                val utfallTilArbeidsgiver = refusjonUtfall.utfallTilArbeidsgiver
-
-                utfallTilArbeidsgiver shouldBe Utfall.INNVILGELSE
-            }
         }
 
         test("grupperer dagene og summerer beløp utbetalt til arbeidsgiver fra daggruppene") {

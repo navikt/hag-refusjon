@@ -6,7 +6,6 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import no.nav.helsearbeidsgiver.refusjon.RefusjonUtfall
-import no.nav.helsearbeidsgiver.refusjon.Utfall
 import no.nav.helsearbeidsgiver.refusjon.arbeidstakerVedtakMeldingMock
 import no.nav.helsearbeidsgiver.utils.json.fromJson
 import no.nav.helsearbeidsgiver.utils.json.parseJson
@@ -33,7 +32,6 @@ class RefusjonProducerTest :
                 fom = LocalDate.of(2026, 7, 28),
                 tom = LocalDate.of(2026, 8, 3),
                 sykepengegrunnlag = 154999.92,
-                utfallTilArbeidsgiver = Utfall.INNVILGELSE,
                 arbeidstakervedtakFattetTidspunkt = LocalDateTime.of(2026, 8, 5, 13, 3, 25),
                 sykmeldtNavn = "Ola Nordmann",
                 arbeidsgiverNavn = "Billys Bollefabrikk AS",
