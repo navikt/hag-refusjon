@@ -18,6 +18,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
     return RefusjonUtfall(
         refusjonUtfallId = refusjonUtfallId,
         vedtaksperiodeId = vedtaksperiodeId,
+        sykmeldingId = dokumenter.first { it.type.equals(Dokument.Type.Sykmelding) }.dokumentId,
         fnr = foedselsnummer,
         orgnr = organisasjonsnummer,
         fom = fom,

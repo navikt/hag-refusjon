@@ -32,6 +32,7 @@ class RefusjonUtfallMapperTest :
                 RefusjonUtfall(
                     refusjonUtfallId = refusjonUtfallId,
                     vedtaksperiodeId = melding.vedtaksperiodeId,
+                    sykmeldingId = melding.dokumenter.first { it.type.equals(Dokument.Type.Sykmelding) }.dokumentId,
                     fnr = fnr,
                     orgnr = orgnr,
                     fom = melding.fom,

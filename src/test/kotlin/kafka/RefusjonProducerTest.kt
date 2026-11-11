@@ -27,6 +27,7 @@ class RefusjonProducerTest :
             RefusjonUtfall(
                 refusjonUtfallId = UUID.randomUUID().toKotlinUuid(),
                 vedtaksperiodeId = vedtaksperiodeId,
+                sykmeldingId = UUID.randomUUID().toKotlinUuid(),
                 fnr = fnr,
                 orgnr = orgnr,
                 fom = LocalDate.of(2026, 7, 28),

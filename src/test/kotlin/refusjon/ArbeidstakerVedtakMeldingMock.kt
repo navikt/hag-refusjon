@@ -25,7 +25,7 @@ fun arbeidstakerVedtakMeldingMock(
         fom = LocalDate.of(2026, 7, 28),
         tom = LocalDate.of(2026, 8, 3),
         skjaeringstidspunkt = LocalDate.of(2026, 7, 1),
-        dokumenter = emptyList(),
+        dokumenter = listOf(Dokument(UUID.randomUUID().toKotlinUuid(), Dokument.Type.Sykmelding)),
         sykepengegrunnlag = 154999.92,
         anvendtSeksG = ANVENDT_6G.toDouble(),
         vedtakFattetTidspunkt = LocalDateTime.of(2026, 8, 5, 13, 3, 25),

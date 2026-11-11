@@ -16,6 +16,7 @@ import kotlin.uuid.Uuid
 data class RefusjonUtfall(
     val refusjonUtfallId: Uuid,
     val vedtaksperiodeId: Uuid,
+    val sykmeldingId: Uuid,
     val fnr: Fnr,
     val orgnr: Orgnr,
     val fom: LocalDate,
