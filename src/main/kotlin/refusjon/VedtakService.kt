@@ -87,7 +87,15 @@ class VedtakService(
     }
 
     private suspend fun hentDataOgLagreRefusjonUtfall(melding: ArbeidstakerVedtakMelding): RefusjonUtfall {
-        val refusjonskrav = refusjonskravService.hentRefusjonskrav(inntektsmeldingIder = melding.hagInntektsmeldingReferanser())
+        val inntektsmeldingIder = melding.hagInntektsmeldingReferanser()
+        if (inntektsmeldingIder.size != 1) {
+            sikkerLogger.info(
+                "Antall inntektsmeldingreferanser for behandlingId {} er {} (vi forventer normalt 1)",
+                melding.behandlingId,
+                inntektsmeldingIder.size,
+            )
+        }
+        val refusjonskrav = refusjonskravService.hentRefusjonskrav(inntektsmeldingIder)
 
         val arbeidsgiverNavn =
             try {

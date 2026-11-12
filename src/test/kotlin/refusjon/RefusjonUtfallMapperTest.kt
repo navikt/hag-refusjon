@@ -1,7 +1,6 @@
 package no.nav.helsearbeidsgiver.refusjon
 
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
 import no.nav.helsearbeidsgiver.domene.inntektsmelding.v1.Refusjon
 import no.nav.helsearbeidsgiver.refusjonskrav.InntektsmeldingRefusjonskrav
@@ -33,6 +32,7 @@ class RefusjonUtfallMapperTest :
                     refusjonUtfallId = refusjonUtfallId,
                     vedtaksperiodeId = melding.vedtaksperiodeId,
                     sykmeldingId = melding.dokumenter.first { it.type.equals(Dokument.Type.Sykmelding) }.dokumentId,
+                    inntektsmeldingIder = emptyList(),
                     fnr = fnr,
                     orgnr = orgnr,
                     fom = melding.fom,
