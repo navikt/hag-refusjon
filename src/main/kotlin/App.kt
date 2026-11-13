@@ -40,6 +40,7 @@ import no.nav.helsearbeidsgiver.refusjon.vedtakRoutes
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravRepository
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
 import no.nav.helsearbeidsgiver.utils.NaisLeaderConfig
+import no.nav.helsearbeidsgiver.utils.UnleashFeatureToggles
 import no.nav.helsearbeidsgiver.utils.cache.LocalCache
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.pipe.orDefault
@@ -53,6 +54,7 @@ import kotlin.time.Duration.Companion.days
 
 fun main() {
     LoggerFactory.getLogger("App").info("Starter server...")
+    val unleashFeatureToggles = UnleashFeatureToggles()
     val bucketStorage =
         BucketStorageImpl(
             bucketName = getPropertyOrNull("GCP_BUCKET_NAME").orDefault { throw RuntimeException("GCP_BUCKET_NAME ikke satt") },
