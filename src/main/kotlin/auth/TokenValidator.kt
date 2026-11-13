@@ -44,13 +44,13 @@ class TexasTokenValidator(
                 ).body<JsonObject>()
 
         if (respons["active"]?.jsonPrimitive?.booleanOrNull != true) {
-            logger.info("Ugyldig token: ${respons["error"]?.jsonPrimitive?.contentOrNull}")
+            logger.warn("Ugyldig token: ${respons["error"]?.jsonPrimitive?.contentOrNull}")
             return null
         }
 
         val azp = respons["azp"]?.jsonPrimitive?.contentOrNull
         if (azp !in preAutoriserteKlientIder) {
-            logger.info("Ukjent azp: ${respons["azp_name"]?.jsonPrimitive?.contentOrNull} ($azp)")
+            logger.warn("Ukjent azp: ($azp)")
             return null
         }
 
