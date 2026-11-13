@@ -18,8 +18,8 @@ import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.auth.TexasTokenValidator
 import no.nav.helsearbeidsgiver.auth.TokenPrincipal
 import no.nav.helsearbeidsgiver.auth.TokenValidator
-import no.nav.helsearbeidsgiver.bakgrunnsjobb.ArbeidstakerVedtakJobb
 import no.nav.helsearbeidsgiver.auth.parsePreAutoriserteKlientIder
+import no.nav.helsearbeidsgiver.bakgrunnsjobb.ArbeidstakerVedtakJobb
 import no.nav.helsearbeidsgiver.brreg.BrregClient
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
