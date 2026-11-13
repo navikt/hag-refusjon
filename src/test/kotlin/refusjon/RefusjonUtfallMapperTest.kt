@@ -1,7 +1,7 @@
 package no.nav.helsearbeidsgiver.refusjon
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
 import no.nav.helsearbeidsgiver.domene.inntektsmelding.v1.Refusjon
 import no.nav.helsearbeidsgiver.refusjonskrav.InntektsmeldingRefusjonskrav
@@ -32,12 +32,13 @@ class RefusjonUtfallMapperTest :
                 RefusjonUtfall(
                     refusjonUtfallId = refusjonUtfallId,
                     vedtaksperiodeId = melding.vedtaksperiodeId,
+                    sykmeldingId = melding.dokumenter.first { it.type.equals(Dokument.Type.Sykmelding) }.dokumentId,
+                    inntektsmeldingIder = emptyList(),
                     fnr = fnr,
                     orgnr = orgnr,
                     fom = melding.fom,
                     tom = melding.tom,
                     sykepengegrunnlag = melding.sykepengegrunnlag,
-                    utfallTilArbeidsgiver = Utfall.INNVILGELSE,
                     arbeidstakervedtakFattetTidspunkt = melding.vedtakFattetTidspunkt,
                     sykmeldtNavn = "Ola Nordmann",
                     arbeidsgiverNavn = "Arbeidsgiver AS",
@@ -46,20 +47,6 @@ class RefusjonUtfallMapperTest :
                     beloepUtbetaltTilArbeidsgiver = 0,
                     arbeidstakerVedtakMelding = melding,
                 )
-        }
-
-        context("utfall til arbeidsgiver er alltid innvilgelse") {
-            withData(VedtaksUtfall.entries) { vedtaksUtfall ->
-                val refusjonUtfall =
-                    arbeidstakerVedtakMeldingMock(fnr, orgnr)
-                        .copy(vedtaksUtfallTilArbeidsgiver = vedtaksUtfall)
-                        .tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
-
-                @Suppress("DEPRECATION")
-                val utfallTilArbeidsgiver = refusjonUtfall.utfallTilArbeidsgiver
-
-                utfallTilArbeidsgiver shouldBe Utfall.INNVILGELSE
-            }
         }
 
         test("grupperer dagene og summerer beløp utbetalt til arbeidsgiver fra daggruppene") {
@@ -149,5 +136,15 @@ class RefusjonUtfallMapperTest :
                 )
 
             melding.hagInntektsmeldingReferanser() shouldBe listOf(imId, annenImId)
+        }
+
+        test("manglende sykmeldingId kaster exception") {
+            val melding =
+                arbeidstakerVedtakMeldingMock(fnr, orgnr).copy(
+                    dokumenter = emptyList(),
+                )
+            shouldThrow<NoSuchElementException> {
+                melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+            }
         }
     })

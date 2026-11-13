@@ -16,14 +16,14 @@ import kotlin.uuid.Uuid
 data class RefusjonUtfall(
     val refusjonUtfallId: Uuid,
     val vedtaksperiodeId: Uuid,
+    val sykmeldingId: Uuid,
+    val inntektsmeldingIder: List<Uuid>,
     val fnr: Fnr,
     val orgnr: Orgnr,
     val fom: LocalDate,
     val tom: LocalDate,
     // Fra vedtaket i sis, uendret.
     val sykepengegrunnlag: Double,
-    @Deprecated("Er alltid INNVILGELSE og skal fjernes. Beholdes fordi lps-api krever feltet.")
-    val utfallTilArbeidsgiver: Utfall,
     val arbeidstakervedtakFattetTidspunkt: LocalDateTime,
     val sykmeldtNavn: String,
     val arbeidsgiverNavn: String,
@@ -34,10 +34,3 @@ data class RefusjonUtfall(
     val beloepUtbetaltTilArbeidsgiver: Int,
     val arbeidstakerVedtakMelding: ArbeidstakerVedtakMelding,
 )
-
-@Serializable
-enum class Utfall {
-    AVSLAG,
-    DELVIS_INNVILGELSE,
-    INNVILGELSE,
-}
