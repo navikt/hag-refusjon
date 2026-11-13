@@ -1,5 +1,6 @@
 package no.nav.helsearbeidsgiver.refusjon
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.helsearbeidsgiver.domene.inntektsmelding.v1.Refusjon
@@ -135,5 +136,15 @@ class RefusjonUtfallMapperTest :
                 )
 
             melding.hagInntektsmeldingReferanser() shouldBe listOf(imId, annenImId)
+        }
+
+        test("manglende sykmeldingId kaster exception") {
+            val melding =
+                arbeidstakerVedtakMeldingMock(fnr, orgnr).copy(
+                    dokumenter = emptyList(),
+                )
+            shouldThrow<NoSuchElementException> {
+                melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+            }
         }
     })
