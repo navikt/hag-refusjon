@@ -88,7 +88,7 @@ fun gyldigMelding(
       "dokumenter": [
         {
           "dokumentId": "a762f7c3-db3a-4f4b-872b-d37642ea69ba",
-          "type": "Søknad"
+          "type": "Sykmelding"
         }
       ],
       "sykepengegrunnlag": 154999.92,
