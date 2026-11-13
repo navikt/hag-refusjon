@@ -51,6 +51,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.slf4j.LoggerFactory
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 
 fun main() {
     LoggerFactory.getLogger("App").info("Starter server...")
@@ -119,10 +120,12 @@ fun main() {
                 refusjonUtfallRepository = RefusjonUtfallRepository(database.database),
             )
 
+        val bakgrunnsjobInterval = if (isDev()) 5.seconds else 60.seconds
         val bakgrunnsjobbService =
             BakgrunnsjobbService(
                 bakgrunnsjobbRepository = ExposedBakgrunnsjobRepository(database.database),
                 leaderConfig = NaisLeaderConfig,
+                interval = bakgrunnsjobInterval,
             )
         bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb(vedtakService))
         bakgrunnsjobbService.startAsync(retryOnFail = true)
