@@ -1,19 +1,19 @@
 package no.nav.helsearbeidsgiver.kafka
 
+import no.nav.helsearbeidsgiver.refusjon.RefusjonUtfall
 import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.json.toPretty
 import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
-import no.nav.helsearbeidsgiver.vedtak.RefusjonUtfall
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 class RefusjonProducer(
     private val kafkaProducer: Producer<String, String>,
     private val topic: String,
 ) {
     fun send(
-        vedtaksperiodeId: UUID,
+        vedtaksperiodeId: Uuid,
         refusjonUtfall: RefusjonUtfall,
     ) {
         val key = vedtaksperiodeId.toString()

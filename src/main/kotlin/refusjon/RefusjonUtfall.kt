@@ -1,65 +1,36 @@
-@file:UseSerializers(UuidSerializer::class, LocalDateSerializer::class, LocalDateTimeSerializer::class)
+@file:UseSerializers(LocalDateSerializer::class, LocalDateTimeSerializer::class)
 
-package no.nav.helsearbeidsgiver.vedtak
+package no.nav.helsearbeidsgiver.refusjon
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateSerializer
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateTimeSerializer
-import no.nav.helsearbeidsgiver.utils.json.serializer.UuidSerializer
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 @Serializable
 data class RefusjonUtfall(
-    val refusjonUtfallId: UUID,
-    val vedtaksperiodeId: UUID,
+    val refusjonUtfallId: Uuid,
+    val vedtaksperiodeId: Uuid,
+    val sykmeldingId: Uuid,
+    val inntektsmeldingIder: List<Uuid>,
     val fnr: Fnr,
     val orgnr: Orgnr,
     val fom: LocalDate,
     val tom: LocalDate,
+    // Fra vedtaket i sis, uendret.
     val sykepengegrunnlag: Double,
-    val utfallTilArbeidsgiver: Utfall,
-    val fattetTidspunkt: LocalDateTime,
-    val journalpostId: String,
-    val sykmeldtNavn: String? = null,
-    val arbeidsgiverNavn: String? = null,
+    val arbeidstakervedtakFattetTidspunkt: LocalDateTime,
+    val sykmeldtNavn: String,
+    val arbeidsgiverNavn: String,
+    val daggrupper: List<Daggruppe>,
+    // Null hvis ingen av dagene peker på en inntektsmelding med refusjonskrav.
+    val refusjonskrav: Refusjonskrav?,
+    // Summen av beloepUtbetaltTilArbeidsgiver i daggruppene. Beregnet av Spleis, som begrenser til 6G og justerer for sykdomsgrad.
+    val beloepUtbetaltTilArbeidsgiver: Int,
     val arbeidstakerVedtakMelding: ArbeidstakerVedtakMelding,
 )
-
-@Serializable
-enum class Utfall {
-    AVSLAG,
-    DELVIS_INNVILGELSE,
-    INNVILGELSE,
-}
-
-fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
-    refusjonsutfallId: UUID,
-    arbeidsgiverNavn: String,
-    sykmeldtNavn: String,
-    journalpostId: String,
-): RefusjonUtfall =
-    RefusjonUtfall(
-        refusjonUtfallId = refusjonsutfallId,
-        vedtaksperiodeId = vedtaksperiodeId,
-        fnr = foedselsnummer,
-        orgnr = organisasjonsnummer,
-        fom = fom,
-        tom = tom,
-        sykepengegrunnlag = sykepengegrunnlag,
-        utfallTilArbeidsgiver =
-            when (vedtaksUtfallTilArbeidsgiver) {
-                VedtaksUtfall.AVSLAG -> Utfall.AVSLAG
-                VedtaksUtfall.DELVIS_INNVILGELSE -> Utfall.DELVIS_INNVILGELSE
-                VedtaksUtfall.INNVILGELSE -> Utfall.INNVILGELSE
-            },
-        fattetTidspunkt = vedtakFattetTidspunkt,
-        journalpostId = journalpostId,
-        sykmeldtNavn = sykmeldtNavn,
-        arbeidsgiverNavn = arbeidsgiverNavn,
-        arbeidstakerVedtakMelding = this,
-    )

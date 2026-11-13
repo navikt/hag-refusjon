@@ -9,18 +9,31 @@ spec:
   kafka:
     pool: nav-dev
   gcp:
+    sqlInstances:
+      - type: POSTGRES_18
+        tier: db-f1-micro
+        databases:
+          - name: refusjon
     buckets:
       - name: helsearbeidsgiver-refusjon-dev
         #retentionPeriodDays: 1
   env:
     - name: BRREG_URL
       value: "https://data.ppe.brreg.no/enhetsregisteret/api/underenheter"
+    - name: KAFKA_TOPIC_SIS
+      value: tbd.sis
+    - name: KAFKA_CONSUMER_GROUP_ID
+      value: hag-refusjon-v1
     - name: GCP_BUCKET_NAME
       value: helsearbeidsgiver-refusjon-dev
     - name: PDL_URL
       value: "https://pdl-api.dev-fss-pub.nais.io/graphql"
     - name: PDL_SCOPE
       value: "api://dev-fss.pdl.pdl-api/.default"
+    - name: REFUSJONSKRAV_URL
+      value: "http://spinosaurus"
+    - name: REFUSJONSKRAV_SCOPE
+      value: "api://dev-gcp.helsearbeidsgiver.spinosaurus/.default"
     - name: DOKARKIV_URL
       value: "https://dokarkiv-q2.dev-fss-pub.nais.io/rest/journalpostapi/v1"
     - name: DOKARKIV_SCOPE

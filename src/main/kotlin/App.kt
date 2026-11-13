@@ -9,31 +9,45 @@ import io.ktor.server.auth.bearer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import no.nav.hag.utils.bakgrunnsjobb.BakgrunnsjobbService
+import no.nav.hag.utils.bakgrunnsjobb.exposed.ExposedBakgrunnsjobRepository
 import no.nav.helsearbeidsgiver.Env.getPropertyOrNull
 import no.nav.helsearbeidsgiver.Env.isDev
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.auth.TexasTokenValidator
 import no.nav.helsearbeidsgiver.auth.TokenPrincipal
 import no.nav.helsearbeidsgiver.auth.TokenValidator
+import no.nav.helsearbeidsgiver.bakgrunnsjobb.ArbeidstakerVedtakJobb
 import no.nav.helsearbeidsgiver.auth.parsePreAutoriserteKlientIder
 import no.nav.helsearbeidsgiver.brreg.BrregClient
 import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.bucket.BucketStorageImpl
+import no.nav.helsearbeidsgiver.db.DatabaseConfig
 import no.nav.helsearbeidsgiver.helsesjekker.naisRoutes
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
+import no.nav.helsearbeidsgiver.kafka.SisConsumer
+import no.nav.helsearbeidsgiver.kafka.SisTolker
+import no.nav.helsearbeidsgiver.kafka.configureSisConsumer
+import no.nav.helsearbeidsgiver.kafka.createKafkaConsumerConfig
 import no.nav.helsearbeidsgiver.kafka.createKafkaProducerConfig
 import no.nav.helsearbeidsgiver.person.PdlService
+import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
+import no.nav.helsearbeidsgiver.refusjon.RefusjonUtfallRepository
+import no.nav.helsearbeidsgiver.refusjon.VedtakMottak
+import no.nav.helsearbeidsgiver.refusjon.VedtakService
+import no.nav.helsearbeidsgiver.refusjon.pdfRoutes
+import no.nav.helsearbeidsgiver.refusjon.vedtakRoutes
+import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravRepository
+import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
+import no.nav.helsearbeidsgiver.utils.NaisLeaderConfig
 import no.nav.helsearbeidsgiver.utils.cache.LocalCache
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
 import no.nav.helsearbeidsgiver.utils.pipe.orDefault
-import no.nav.helsearbeidsgiver.vedtak.pdfRoutes
-import no.nav.helsearbeidsgiver.vedtak.vedtakRoutes
 import no.nav.helsearbeidsgiver.virksomhet.BrregVirksomhetsnavnKlient
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlientMedFallback
+import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.slf4j.LoggerFactory
 import kotlin.time.Duration.Companion.days
@@ -85,20 +99,77 @@ fun main() {
                         .orDefault { throw RuntimeException("AZURE_APP_PRE_AUTHORIZED_APPS ikke satt") },
                 ),
         )
-    embeddedServer(
-        factory = Netty,
-        port = 8080,
-        module = { module(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService, tokenValidator) },
-    ).start(wait = true)
+    DatabaseConfig().use { database ->
+
+        val refusjonskravService =
+            RefusjonskravService(
+                url = getPropertyOrNull("REFUSJONSKRAV_URL").orDefault { throw RuntimeException("REFUSJONSKRAV_URL ikke satt") },
+                scope = getPropertyOrNull("REFUSJONSKRAV_SCOPE").orDefault { throw RuntimeException("REFUSJONSKRAV_SCOPE ikke satt") },
+                tokenEndpoint =
+                    getPropertyOrNull(
+                        "NAIS_TOKEN_ENDPOINT",
+                    ).orDefault { throw RuntimeException("NAIS_TOKEN_ENDPOINT ikke satt") },
+                repository = RefusjonskravRepository(database.database),
+            )
+
+        val vedtakService =
+            VedtakService(
+                bucketStorage = bucketStorage,
+                refusjonProducer = refusjonProducer,
+                virksomhetsnavnKlient = virksomhetsnavnKlient,
+                pdlService = pdlService,
+                arkivService = arkivService,
+                refusjonskravService = refusjonskravService,
+                refusjonUtfallRepository = RefusjonUtfallRepository(database.database),
+            )
+
+        val bakgrunnsjobbService =
+            BakgrunnsjobbService(
+                bakgrunnsjobbRepository = ExposedBakgrunnsjobRepository(database.database),
+                leaderConfig = NaisLeaderConfig,
+            )
+        bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb(vedtakService))
+        bakgrunnsjobbService.startAsync(retryOnFail = true)
+
+        val arbeidstakerVedtakRepository = ArbeidstakerVedtakRepository(database.database)
+
+        val sisConsumer =
+            SisConsumer(
+                consumer =
+                    KafkaConsumer(
+                        createKafkaConsumerConfig(
+                            consumerName = "sis-consumer",
+                            groupId =
+                                getPropertyOrNull(
+                                    "KAFKA_CONSUMER_GROUP_ID",
+                                ).orDefault { throw RuntimeException("KAFKA_CONSUMER_GROUP_ID ikke satt") },
+                        ),
+                    ),
+                topic = getPropertyOrNull("KAFKA_TOPIC_SIS").orDefault { throw RuntimeException("KAFKA_TOPIC_SIS ikke satt") },
+                tolker = SisTolker(),
+                arbeidstakerVedtakRepository = arbeidstakerVedtakRepository,
+                bakgrunnsjobbService = bakgrunnsjobbService,
+                db = database.database,
+                leaderConfig = NaisLeaderConfig,
+            )
+
+        val vedtakMottak = VedtakMottak(arbeidstakerVedtakRepository, bakgrunnsjobbService, database.database)
+
+        embeddedServer(
+            factory = Netty,
+            port = 8080,
+            module = {
+                module(bucketStorage, tokenValidator, vedtakMottak)
+                configureSisConsumer(sisConsumer)
+            },
+        ).start(wait = true)
+    }
 }
 
 fun Application.module(
     bucketStorage: BucketStorage,
-    refusjonProducer: RefusjonProducer,
-    virksomhetsnavnKlient: VirksomhetsnavnKlient,
-    pdlService: PdlService,
-    arkivService: ArkivService,
     tokenValidator: TokenValidator,
+    vedtakMottak: VedtakMottak,
 ) {
     install(ContentNegotiation) {
         json(jsonConfig)
@@ -112,10 +183,7 @@ fun Application.module(
     }
     routing {
         naisRoutes()
-        get("/hello") {
-            call.respondText("Hello World!")
-        }
-        vedtakRoutes(bucketStorage, refusjonProducer, virksomhetsnavnKlient, pdlService, arkivService)
+        vedtakRoutes(vedtakMottak)
         authenticate(ENTRA_ID_AUTH) {
             pdfRoutes(bucketStorage)
         }

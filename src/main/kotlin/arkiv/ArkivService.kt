@@ -2,15 +2,12 @@ package no.nav.helsearbeidsgiver.arkiv
 
 import no.nav.helsearbeidsgiver.auth.AzureAdTokenHenter
 import no.nav.helsearbeidsgiver.dokarkiv.DokArkivClient
-import no.nav.helsearbeidsgiver.dokarkiv.domene.Avsender
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Dokument
 import no.nav.helsearbeidsgiver.dokarkiv.domene.DokumentVariant
 import no.nav.helsearbeidsgiver.dokarkiv.domene.GjelderPerson
-import no.nav.helsearbeidsgiver.dokarkiv.domene.Journalposttype
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Kanal
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Mottaker
-import no.nav.helsearbeidsgiver.vedtak.ArbeidstakerVedtakMelding
-import java.time.LocalDate
+import no.nav.helsearbeidsgiver.refusjon.RefusjonUtfall
 import java.util.Base64
 import java.util.UUID
 
@@ -28,16 +25,14 @@ class ArkivService(
     )
 
     suspend fun arkiver(
-        melding: ArbeidstakerVedtakMelding,
-        refusjonUtfallId: UUID,
-        arbeidsgiverNavn: String,
+        refusjonUtfall: RefusjonUtfall,
         pdf: ByteArray,
     ): String =
         dokArkivClient
             .opprettOgFerdigstillJournalpostUtgaaende(
                 tittel = TITTEL,
-                gjelderPerson = GjelderPerson(melding.foedselsnummer.verdi),
-                mottaker = Mottaker.Organisasjon(orgnr = melding.organisasjonsnummer.verdi, navn = arbeidsgiverNavn),
+                gjelderPerson = GjelderPerson(refusjonUtfall.fnr.verdi),
+                mottaker = Mottaker.Organisasjon(orgnr = refusjonUtfall.orgnr.verdi, navn = refusjonUtfall.arbeidsgiverNavn),
                 dokumenter =
                     listOf(
                         Dokument(
@@ -49,12 +44,12 @@ class ArkivService(
                                         filtype = "PDFA",
                                         fysiskDokument = Base64.getEncoder().encodeToString(pdf),
                                         variantFormat = "ARKIV",
-                                        filnavn = "refusjon-$refusjonUtfallId.pdf",
+                                        filnavn = "refusjon-${refusjonUtfall.refusjonUtfallId}.pdf",
                                     ),
                                 ),
                         ),
                     ),
-                eksternReferanseId = refusjonUtfallId.toString(),
+                eksternReferanseId = refusjonUtfall.refusjonUtfallId.toString(),
                 callId = UUID.randomUUID().toString(),
                 kanal = Kanal.ALTINN,
             ).journalpostId

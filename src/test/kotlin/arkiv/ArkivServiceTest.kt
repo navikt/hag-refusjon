@@ -12,21 +12,21 @@ import no.nav.helsearbeidsgiver.dokarkiv.domene.GjelderPerson
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Kanal
 import no.nav.helsearbeidsgiver.dokarkiv.domene.Mottaker
 import no.nav.helsearbeidsgiver.dokarkiv.domene.OpprettOgFerdigstillResponse
+import no.nav.helsearbeidsgiver.refusjon.arbeidstakerVedtakMeldingMock
+import no.nav.helsearbeidsgiver.refusjon.tilRefusjonUtfall
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
-import no.nav.helsearbeidsgiver.vedtak.arbeidstakerVedtakMeldingMock
-import java.time.LocalDate
-import java.time.LocalDateTime
 import java.util.Base64
 import java.util.UUID
+import kotlin.uuid.toKotlinUuid
 
 class ArkivServiceTest :
     FunSpec({
         test("arkiverer PDF som utgående journalpost med ARKIV-variant og returnerer journalpostId") {
             val fnr = Fnr.genererGyldig()
             val orgnr = Orgnr.genererGyldig()
-            val refusjonUtfallId = UUID.randomUUID()
+            val refusjonUtfallId = UUID.randomUUID().toKotlinUuid()
             val pdf = "PDF innhold".toByteArray()
 
             val mottaker = slot<Mottaker>()
@@ -57,9 +57,9 @@ class ArkivServiceTest :
 
             val journalpostId =
                 ArkivService(dokArkivClient).arkiver(
-                    melding = arbeidstakerVedtakMeldingMock(fnr, orgnr),
-                    refusjonUtfallId = refusjonUtfallId,
-                    arbeidsgiverNavn = "Billys Bollefabrikk AS",
+                    refusjonUtfall =
+                        arbeidstakerVedtakMeldingMock(fnr, orgnr)
+                            .tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann"),
                     pdf = pdf,
                 )
 

@@ -7,7 +7,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import no.nav.helsearbeidsgiver.utils.json.jsonConfig
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 fun createHttpClient() =
     HttpClient(Apache5) {
@@ -25,4 +25,4 @@ fun createHttpClient() =
         }
     }
 
-fun String.toUuidOrNull() = runCatching(UUID::fromString).getOrNull()
+fun String.toUuidOrNull() = Uuid.parseHexDashOrNull(this)
