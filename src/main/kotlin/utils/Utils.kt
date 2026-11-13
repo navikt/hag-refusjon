@@ -16,7 +16,7 @@ fun createHttpClient() =
             json(jsonConfig)
         }
         install(HttpRequestRetry) {
-            retryOnException(maxRetries = 5)
+            retryOnException(maxRetries = 5, retryOnTimeout = true)
         }
         install(HttpTimeout) {
             requestTimeoutMillis = 5000
