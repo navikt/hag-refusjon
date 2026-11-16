@@ -12,6 +12,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
+import io.mockk.verify
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
@@ -19,6 +20,7 @@ import no.nav.helsearbeidsgiver.kafka.TEST_TOPIC
 import no.nav.helsearbeidsgiver.kafka.mockProducer
 import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
+import no.nav.helsearbeidsgiver.utils.UnleashFeatureToggles
 import no.nav.helsearbeidsgiver.utils.json.fromJson
 import no.nav.helsearbeidsgiver.utils.json.parseJson
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
@@ -46,6 +48,7 @@ class VedtakServiceTest :
             pdlService: PdlService = pdlServiceMock(),
             arkivService: ArkivService = arkivServiceMock(),
             repository: RefusjonUtfallRepository = utfallRepositoryMock(),
+            unleashFeatureToggles: UnleashFeatureToggles = unleashFeatureTogglesMock(),
         ) = VedtakService(
             bucketStorage,
             refusjonProducer,
@@ -54,7 +57,74 @@ class VedtakServiceTest :
             arkivService,
             refusjonskravService,
             repository,
+            unleashFeatureToggles,
         )
+
+        test("lagrer utfallet, men hopper over PDF, arkivering og publisering når feature toggle er av") {
+            val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
+            val arkivService = arkivServiceMock()
+            val repository = utfallRepositoryMock()
+            val toggles = unleashFeatureTogglesMock(erJournalfoeringOgDistribusjonSkruddPaa = false)
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            val refusjonsutfallId =
+                vedtakService(
+                    bucketStorage,
+                    RefusjonProducer(mockProducer, TEST_TOPIC),
+                    arkivService = arkivService,
+                    repository = repository,
+                    unleashFeatureToggles = toggles,
+                ).behandle(melding)
+
+            repository.hent(melding.behandlingId)?.refusjonUtfallId shouldBe refusjonsutfallId
+            bucketStorage.pdfer.size shouldBe 0
+            coVerify(exactly = 0) { arkivService.arkiver(any(), any()) }
+            mockProducer.history().shouldBeEmpty()
+            verify(exactly = 1) { toggles.skalJournalfoereOgDistribuereRefusjon(ORGNR) }
+        }
+
+        test("journalfører og distribuerer lagret utfall når jobben kjøres på nytt etter at feature toggle er slått på") {
+            val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
+            val arkivService = arkivServiceMock()
+            val repository = utfallRepositoryMock()
+            val klient = virksomhetsnavnKlientMock()
+            val pdl = pdlServiceMock()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            val foersteId =
+                vedtakService(
+                    bucketStorage,
+                    RefusjonProducer(mockProducer, TEST_TOPIC),
+                    virksomhetsnavnKlient = klient,
+                    pdlService = pdl,
+                    arkivService = arkivService,
+                    repository = repository,
+                    unleashFeatureToggles = unleashFeatureTogglesMock(erJournalfoeringOgDistribusjonSkruddPaa = false),
+                ).behandle(melding)
+
+            bucketStorage.pdfer.size shouldBe 0
+            mockProducer.history().shouldBeEmpty()
+
+            val andreId =
+                vedtakService(
+                    bucketStorage,
+                    RefusjonProducer(mockProducer, TEST_TOPIC),
+                    virksomhetsnavnKlient = klient,
+                    pdlService = pdl,
+                    arkivService = arkivService,
+                    repository = repository,
+                    unleashFeatureToggles = unleashFeatureTogglesMock(erJournalfoeringOgDistribusjonSkruddPaa = true),
+                ).behandle(melding)
+
+            andreId shouldBe foersteId
+            bucketStorage.pdfer[andreId] shouldBe pdfBytes
+            coVerify(exactly = 1) { arkivService.arkiver(match { it.refusjonUtfallId == andreId }, pdfBytes) }
+            mockProducer.history() shouldHaveSize 1
+            coVerify(exactly = 1) { klient.hentVirksomhetsnavn(ORGNR) }
+            coVerify(exactly = 1) { pdl.hentSykmeldtnavn(FNR) }
+        }
 
         test("behandle lagrer utfallet og gjenbruker det uten nye oppslag når behandle kalles igjen") {
             val bucketStorage = FakeBucketStorage()

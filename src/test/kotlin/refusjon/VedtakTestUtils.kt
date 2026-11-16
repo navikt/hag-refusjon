@@ -18,6 +18,7 @@ import io.mockk.mockkObject
 import no.nav.helsearbeidsgiver.arkiv.ArkivService
 import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.utils.PdfgenHttpClient
+import no.nav.helsearbeidsgiver.utils.UnleashFeatureToggles
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
@@ -43,6 +44,11 @@ fun pdlServiceMock(navn: String? = SYKMELDT_NAVN): PdlService =
 fun arkivServiceMock(): ArkivService =
     mockk {
         coEvery { arkiver(any(), any()) } returns JOURNALPOST_ID
+    }
+
+fun unleashFeatureTogglesMock(erJournalfoeringOgDistribusjonSkruddPaa: Boolean = true): UnleashFeatureToggles =
+    mockk {
+        every { skalJournalfoereOgDistribuereRefusjon(ORGNR) } returns erJournalfoeringOgDistribusjonSkruddPaa
     }
 
 fun mockPdfgen(
