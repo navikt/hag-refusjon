@@ -128,7 +128,7 @@ class VedtakServiceTest :
             coVerify(exactly = 1) { pdl.hentSykmeldtnavn(FNR) }
         }
 
-        test("behandle lagrer utfallet og gjenbruker det uten nye oppslag når behandle kalles igjen") {
+        test("lagrer utfallet og gjenbruker det uten nye oppslag når behandle kalles igjen") {
             val bucketStorage = FakeBucketStorage()
             val repository = utfallRepositoryMock()
             val klient = virksomhetsnavnKlientMock()
@@ -192,7 +192,7 @@ class VedtakServiceTest :
             bucketStorage.pdfer.keys shouldBe setOf(eksisterende.refusjonUtfallId)
         }
 
-        test("behandle feiler når lagring av utfall feiler") {
+        test("feiler når lagring av utfall feiler") {
             val bucketStorage = FakeBucketStorage()
             val repository =
                 mockk<RefusjonUtfallRepository> {
@@ -208,7 +208,7 @@ class VedtakServiceTest :
             bucketStorage.pdfer.size shouldBe 0
         }
 
-        test("behandle genererer PDF, lagrer den i bucket, arkiverer og publiserer refusjonsutfall") {
+        test("genererer PDF, lagrer den i bucket, arkiverer og publiserer refusjonsutfall") {
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
             val arkivService = arkivServiceMock()
@@ -253,7 +253,7 @@ class VedtakServiceTest :
             utfall.arbeidstakerVedtakMelding shouldBe melding
         }
 
-        test("behandle feiler og publiserer ingenting når publisering til Kafka feiler") {
+        test("feiler og publiserer ingenting når publisering til Kafka feiler") {
             val mockProducer = mockProducer(autoComplete = false).apply { sendException = RuntimeException("kafka nede") }
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
@@ -296,7 +296,7 @@ class VedtakServiceTest :
             producer.history() shouldHaveSize 1
         }
 
-        test("behandle feiler før publisering når lagring av journalpostId feiler og arkiverer på nytt ved neste forsøk") {
+        test("feiler før publisering når lagring av journalpostId feiler og arkiverer på nytt ved neste forsøk") {
             val bucketStorage = FakeBucketStorage()
             val repository = utfallRepositoryMock()
             val arkivService = arkivServiceMock()
@@ -324,7 +324,7 @@ class VedtakServiceTest :
             producer.history() shouldHaveSize 1
         }
 
-        test("behandle feiler og publiserer ingenting når arkivering feiler") {
+        test("feiler og publiserer ingenting når arkivering feiler") {
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
@@ -341,7 +341,7 @@ class VedtakServiceTest :
             mockProducer.history().shouldBeEmpty()
         }
 
-        test("behandle feiler og lagrer ingenting når pdfgen feiler") {
+        test("feiler og lagrer ingenting når pdfgen feiler") {
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
             mockPdfgen(HttpStatusCode.InternalServerError, "Error".toByteArray())
@@ -354,7 +354,7 @@ class VedtakServiceTest :
             mockProducer.history().shouldBeEmpty()
         }
 
-        test("behandle feiler og gjør ingenting mer når virksomhetsnavn ikke finnes") {
+        test("feiler og gjør ingenting mer når virksomhetsnavn ikke finnes") {
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
@@ -371,7 +371,7 @@ class VedtakServiceTest :
             mockProducer.history().shouldBeEmpty()
         }
 
-        test("behandle feiler og gjør ingenting mer når henting av virksomhetsnavn feiler") {
+        test("feiler og gjør ingenting mer når henting av virksomhetsnavn feiler") {
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
@@ -388,7 +388,7 @@ class VedtakServiceTest :
             mockProducer.history().shouldBeEmpty()
         }
 
-        test("behandle feiler og gjør ingenting mer når sykmeldtnavn ikke finnes") {
+        test("feiler og gjør ingenting mer når sykmeldtnavn ikke finnes") {
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
@@ -405,7 +405,7 @@ class VedtakServiceTest :
             mockProducer.history().shouldBeEmpty()
         }
 
-        test("behandle feiler og gjør ingenting mer når henting av sykmeldtnavn feiler") {
+        test("feiler og gjør ingenting mer når henting av sykmeldtnavn feiler") {
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
