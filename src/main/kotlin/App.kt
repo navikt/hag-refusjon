@@ -34,10 +34,8 @@ import no.nav.helsearbeidsgiver.kafka.createKafkaProducerConfig
 import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakRepository
 import no.nav.helsearbeidsgiver.refusjon.RefusjonUtfallRepository
-import no.nav.helsearbeidsgiver.refusjon.VedtakMottak
 import no.nav.helsearbeidsgiver.refusjon.VedtakService
 import no.nav.helsearbeidsgiver.refusjon.pdfRoutes
-import no.nav.helsearbeidsgiver.refusjon.vedtakRoutes
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravRepository
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
 import no.nav.helsearbeidsgiver.utils.NaisLeaderConfig
@@ -159,13 +157,11 @@ fun main() {
                 leaderConfig = NaisLeaderConfig,
             )
 
-        val vedtakMottak = VedtakMottak(arbeidstakerVedtakRepository, bakgrunnsjobbService, database.database)
-
         embeddedServer(
             factory = Netty,
             port = 8080,
             module = {
-                module(bucketStorage, tokenValidator, vedtakMottak)
+                module(bucketStorage, tokenValidator)
                 configureSisConsumer(sisConsumer)
             },
         ).start(wait = true)
@@ -175,7 +171,6 @@ fun main() {
 fun Application.module(
     bucketStorage: BucketStorage,
     tokenValidator: TokenValidator,
-    vedtakMottak: VedtakMottak,
 ) {
     install(ContentNegotiation) {
         json(jsonConfig)
@@ -189,7 +184,6 @@ fun Application.module(
     }
     routing {
         naisRoutes()
-        vedtakRoutes(vedtakMottak)
         authenticate(ENTRA_ID_AUTH) {
             pdfRoutes(bucketStorage)
         }

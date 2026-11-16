@@ -5,10 +5,8 @@ import io.kotest.matchers.shouldBe
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
-import io.mockk.mockk
 import no.nav.helsearbeidsgiver.auth.FakeTokenValidator
 import no.nav.helsearbeidsgiver.bucket.FakeBucketStorage
-import no.nav.helsearbeidsgiver.refusjon.VedtakMottak
 
 class AppTest :
     FunSpec({
@@ -19,7 +17,6 @@ class AppTest :
                     module(
                         FakeBucketStorage(),
                         FakeTokenValidator(),
-                        mockk<VedtakMottak>(),
                     )
                 }
 
