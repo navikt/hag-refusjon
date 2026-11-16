@@ -118,6 +118,7 @@ fun main() {
                 arkivService = arkivService,
                 refusjonskravService = refusjonskravService,
                 refusjonUtfallRepository = RefusjonUtfallRepository(database.database),
+                unleashFeatureToggles = unleashFeatureToggles,
             )
 
         val bakgrunnsjobInterval = if (isDev()) 5.seconds else 60.seconds

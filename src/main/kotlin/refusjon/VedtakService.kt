@@ -5,6 +5,7 @@ import no.nav.helsearbeidsgiver.bucket.BucketStorage
 import no.nav.helsearbeidsgiver.kafka.RefusjonProducer
 import no.nav.helsearbeidsgiver.person.PdlService
 import no.nav.helsearbeidsgiver.refusjonskrav.RefusjonskravService
+import no.nav.helsearbeidsgiver.utils.UnleashFeatureToggles
 import no.nav.helsearbeidsgiver.utils.genererRefusjonPdf
 import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.json.toPretty
@@ -23,6 +24,7 @@ class VedtakService(
     private val arkivService: ArkivService,
     private val refusjonskravService: RefusjonskravService,
     private val refusjonUtfallRepository: RefusjonUtfallRepository,
+    private val unleashFeatureToggles: UnleashFeatureToggles,
 ) {
     private val logger = LoggerFactory.getLogger(VedtakService::class.java)
     private val sikkerLogger = sikkerLogger()
@@ -37,6 +39,15 @@ class VedtakService(
             refusjonUtfallRepository.hent(melding.behandlingId)
                 ?: hentDataOgLagreRefusjonUtfall(melding)
         val refusjonUtfallId = refusjonUtfall.refusjonUtfallId
+
+        if (!unleashFeatureToggles.skalJournalfoereOgDistribuereRefusjon(melding.organisasjonsnummer)) {
+            sikkerLogger.info(
+                "Feature toggle for journalføring og distribusjon er av for orgnr ${melding.organisasjonsnummer}. " +
+                    "Hopper over PDF-generering og lagring, arkivering og publisering for refusjonsutfallId $refusjonUtfallId " +
+                    "og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+            )
+            return refusjonUtfallId
+        }
 
         val pdf =
             try {
