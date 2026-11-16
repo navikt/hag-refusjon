@@ -9,6 +9,21 @@ concurrency:
   group: deploy-dev
 
 jobs:
+  deploy-unleash-apitoken:
+    if: github.ref_name == 'main' || startsWith(github.ref_name, 'dev/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Deploy Unleash ApiToken til dev
+        uses: nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: dev-gcp
+          RESOURCE: .nais/unleash-apitoken-dev.yml
+
   build-and-deploy:
     uses: navikt/hag-workflows/.github/workflows/build-and-deploy.yml@main
     permissions:

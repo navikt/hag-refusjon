@@ -49,9 +49,12 @@ spec:
           namespace: nais-system
       external:
         - host: data.brreg.no
+        - host: helsearbeidsgiver-unleash-api.nav.cloud.nais.io
   azure:
     application:
       enabled: true
+  envFrom:
+    - secret: refusjon-unleash-api-token
   env:
     - name: KAFKA_TOPIC_REFUSJON
       value: helsearbeidsgiver.refusjon

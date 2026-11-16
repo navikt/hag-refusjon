@@ -53,11 +53,13 @@ dependencies {
     val logbackVersion: String by project
     val pdlClientVersion: String by project
     val postgresqlVersion: String by project
+    val unleashVersion: String by project
     val utilsVersion: String by project
 
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("com.google.cloud:google-cloud-storage:$gcpStorageVersion")
     implementation("com.zaxxer:HikariCP:$hikariVersion")
+    implementation("io.getunleash:unleash-client-java:$unleashVersion")
     implementation("io.ktor:ktor-client-apache5:$ktorVersion")
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
