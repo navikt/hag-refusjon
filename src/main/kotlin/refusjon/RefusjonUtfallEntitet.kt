@@ -10,6 +10,7 @@ object RefusjonUtfallEntitet : Table("refusjon_utfall") {
     val refusjonUtfallId = uuid("refusjon_utfall_id")
     val vedtaksperiodeId = uuid("vedtaksperiode_id")
     val utfall = jsonb("utfall", jsonConfig, RefusjonUtfall.serializer())
+    val journalpostId = text("journalpost_id").nullable()
     val opprettet = timestampWithTimeZone("opprettet")
 
     override val primaryKey = PrimaryKey(behandlingId)

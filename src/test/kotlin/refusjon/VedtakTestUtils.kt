@@ -129,8 +129,13 @@ fun gyldigMelding(
 
 fun utfallRepositoryMock(): RefusjonUtfallRepository {
     val lagret = mutableMapOf<Uuid, RefusjonUtfall>()
+    val journalposter = mutableMapOf<Uuid, String>()
     return mockk {
         every { hent(any()) } answers { lagret[firstArg()] }
         every { lagre(any(), any()) } answers { lagret.putIfAbsent(firstArg(), secondArg()) == null }
+        every { hentJournalpostId(any()) } answers { journalposter[firstArg()] }
+        every { lagreJournalpostId(any(), any()) } answers {
+            journalposter[firstArg()] = secondArg()
+        }
     }
 }

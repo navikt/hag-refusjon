@@ -1,5 +1,6 @@
 package no.nav.helsearbeidsgiver.refusjon
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.helsearbeidsgiver.db.DatabaseConfig
@@ -56,5 +57,30 @@ class RefusjonUtfallRepositoryTest :
             repository.lagre(melding.behandlingId, utfall.copy(refusjonUtfallId = UUID.randomUUID().toKotlinUuid())) shouldBe false
 
             repository.hent(melding.behandlingId) shouldBe utfall
+        }
+
+        test("journalpostId er null før arkivering") {
+            repository.lagre(melding.behandlingId, utfall)
+
+            repository.hentJournalpostId(utfall.refusjonUtfallId) shouldBe null
+        }
+
+        test("lagrer journalpostId på riktig utfall uten å endre utfallsdata") {
+            val annetUtfall = utfall.copy(refusjonUtfallId = UUID.randomUUID().toKotlinUuid())
+            repository.lagre(melding.behandlingId, utfall)
+            repository.lagre(UUID.randomUUID().toKotlinUuid(), annetUtfall)
+
+            repository.lagreJournalpostId(utfall.refusjonUtfallId, JOURNALPOST_ID)
+            repository.lagreJournalpostId(utfall.refusjonUtfallId, JOURNALPOST_ID)
+
+            repository.hentJournalpostId(utfall.refusjonUtfallId) shouldBe JOURNALPOST_ID
+            repository.hentJournalpostId(annetUtfall.refusjonUtfallId) shouldBe null
+            repository.hent(melding.behandlingId) shouldBe utfall
+        }
+
+        test("lagring av journalpostId feiler hvis utfallet ikke finnes") {
+            shouldThrow<IllegalStateException> {
+                repository.lagreJournalpostId(utfall.refusjonUtfallId, JOURNALPOST_ID)
+            }
         }
     })
