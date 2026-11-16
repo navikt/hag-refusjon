@@ -117,6 +117,7 @@ fun main() {
                 arkivService = arkivService,
                 refusjonskravService = refusjonskravService,
                 refusjonUtfallRepository = RefusjonUtfallRepository(database.database),
+                unleashFeatureToggles = unleashFeatureToggles,
             )
 
         val bakgrunnsjobbService =
