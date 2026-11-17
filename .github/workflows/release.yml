@@ -1,0 +1,33 @@
+name: Produksjon
+
+on:
+  release:
+    types: [ released ]
+
+concurrency:
+  group: deploy-prod
+
+jobs:
+  deploy-unleash-apitoken:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Deploy Unleash ApiToken til prod
+        uses: nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: prod-gcp
+          RESOURCE: .nais/unleash-apitoken-prod.yml
+
+  build-and-deploy:
+    uses: navikt/hag-workflows/.github/workflows/build-and-deploy.yml@main
+    permissions:
+      id-token: write
+    with:
+      environment: prod
+      project-id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+    secrets:
+      identity-provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}

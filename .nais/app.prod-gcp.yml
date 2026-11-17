@@ -1,0 +1,54 @@
+spec:
+  accessPolicy:
+    outbound:
+      external:
+        - host: pdl-api.prod-fss-pub.nais.io
+        - host: dokarkiv.prod-fss-pub.nais.io
+        - host: data.brreg.no
+
+  kafka:
+    pool: nav-prod
+  gcp:
+    sqlInstances:
+      - type: POSTGRES_18
+        tier: db-custom-1-3840
+        diskAutoresize: true
+        flags:
+          - name: cloudsql.enable_pgaudit
+            value: "true"
+          - name: pgaudit.log
+            value: "write,ddl,role"
+          - name: pgaudit.log_parameter
+            value: "on"
+          - name: cloudsql.logical_decoding
+            value: "on"
+          - name: pgaudit.log_relation
+            value: "on"
+        databases:
+          - name: refusjon
+    buckets:
+      - name: helsearbeidsgiver-refusjon-prod
+  env:
+    - name: BRREG_URL
+      value: "https://data.brreg.no/enhetsregisteret/api/underenheter"
+    - name: KAFKA_TOPIC_SIS
+      value: tbd.sis
+    - name: KAFKA_CONSUMER_GROUP_ID
+      value: hag-refusjon-v1
+    - name: GCP_BUCKET_NAME
+      value: helsearbeidsgiver-refusjon-prod
+    - name: PDL_URL
+      value: "https://pdl-api.prod-fss-pub.nais.io/graphql"
+    - name: PDL_SCOPE
+      value: "api://prod-fss.pdl.pdl-api/.default"
+    - name: REFUSJONSKRAV_URL
+      value: "http://spinosaurus"
+    - name: REFUSJONSKRAV_SCOPE
+      value: "api://prod-gcp.helsearbeidsgiver.spinosaurus/.default"
+    - name: DOKARKIV_URL
+      value: "https://dokarkiv.prod-fss-pub.nais.io/rest/journalpostapi/v1"
+    - name: DOKARKIV_SCOPE
+      value: "api://prod-fss.teamdokumenthandtering.dokarkiv/.default"
+
+  ingresses:
+    - https://hag-refusjon.intern.nav.no
