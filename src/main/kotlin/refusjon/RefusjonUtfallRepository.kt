@@ -5,6 +5,7 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import kotlin.uuid.Uuid
 
 open class RefusjonUtfallRepository(
@@ -38,4 +39,32 @@ open class RefusjonUtfallRepository(
                     it[this.utfall] = utfall
                 }.insertedCount > 0
         }
+
+    open fun hentJournalpostId(refusjonUtfallId: Uuid): String? =
+        transaction(db) {
+            maxAttempts = 1
+            queryTimeout = 10
+
+            RefusjonUtfallEntitet
+                .selectAll()
+                .where { RefusjonUtfallEntitet.refusjonUtfallId eq refusjonUtfallId }
+                .singleOrNull()
+                ?.get(RefusjonUtfallEntitet.journalpostId)
+        }
+
+    open fun lagreJournalpostId(
+        refusjonUtfallId: Uuid,
+        journalpostId: String,
+    ) {
+        transaction(db) {
+            maxAttempts = 1
+            queryTimeout = 10
+
+            val oppdatert =
+                RefusjonUtfallEntitet.update({ RefusjonUtfallEntitet.refusjonUtfallId eq refusjonUtfallId }) {
+                    it[this.journalpostId] = journalpostId
+                }
+            check(oppdatert == 1) { "Fant ikke refusjonsutfall med refusjonUtfallId $refusjonUtfallId ved lagring av journalpostId." }
+        }
+    }
 }

@@ -68,17 +68,30 @@ class VedtakService(
             }
 
         val journalpostId =
-            try {
-                arkivService.arkiver(refusjonUtfall, pdf)
-            } catch (e: Exception) {
-                throw loggOgKast(
-                    "Feil ved arkivering av refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
-                    e,
-                )
+            refusjonUtfallRepository.hentJournalpostId(refusjonUtfallId) ?: run {
+                val opprettetJournalpostId =
+                    try {
+                        arkivService.arkiver(refusjonUtfall, pdf)
+                    } catch (e: Exception) {
+                        throw loggOgKast(
+                            "Feil ved arkivering av refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+                            e,
+                        )
+                    }
+
+                try {
+                    refusjonUtfallRepository.lagreJournalpostId(refusjonUtfallId, opprettetJournalpostId)
+                } catch (e: Exception) {
+                    throw loggOgKast(
+                        "Feil ved lagring av journalpostId $opprettetJournalpostId for refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+                        e,
+                    )
+                }
+                opprettetJournalpostId
             }
 
         sikkerLogger.info(
-            "Arkiverte refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId} i journalpost $journalpostId.",
+            "Refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId} er knyttet til journalpost $journalpostId.",
         )
 
         try {
