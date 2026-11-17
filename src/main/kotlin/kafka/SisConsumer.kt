@@ -12,7 +12,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import no.nav.hag.utils.bakgrunnsjobb.BakgrunnsjobbService
 import no.nav.hag.utils.bakgrunnsjobb.LeaderConfig
-import no.nav.helsearbeidsgiver.Env.isDev
 import no.nav.helsearbeidsgiver.bakgrunnsjobb.ArbeidstakerVedtakJobb
 import no.nav.helsearbeidsgiver.helsesjekker.ShutDownAppState
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
@@ -115,10 +114,8 @@ fun Application.configureSisConsumer(sisConsumer: SisConsumer) {
             }
             ShutDownAppState.shutDownApp = true
         }
-    if (isDev()) { // TODO: Fjern denne snart, vi starter ikke kafka-lesing ved første deploy til prod
-        val job = launch(Dispatchers.IO + exceptionHandler) { sisConsumer.kjoer() }
-        monitor.subscribe(ApplicationStopping) {
-            runBlocking { job.cancelAndJoin() }
-        }
+    val job = launch(Dispatchers.IO + exceptionHandler) { sisConsumer.kjoer() }
+    monitor.subscribe(ApplicationStopping) {
+        runBlocking { job.cancelAndJoin() }
     }
 }
