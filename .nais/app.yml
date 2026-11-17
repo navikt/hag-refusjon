@@ -48,7 +48,6 @@ spec:
         - application: logging
           namespace: nais-system
       external:
-        - host: data.brreg.no
         - host: helsearbeidsgiver-unleash-api.nav.cloud.nais.io
   azure:
     application:
