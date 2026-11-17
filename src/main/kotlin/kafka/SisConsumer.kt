@@ -115,10 +115,8 @@ fun Application.configureSisConsumer(sisConsumer: SisConsumer) {
             }
             ShutDownAppState.shutDownApp = true
         }
-    if (isDev()) { // TODO: Fjern denne snart, vi starter ikke kafka-lesing ved første deploy til prod
-        val job = launch(Dispatchers.IO + exceptionHandler) { sisConsumer.kjoer() }
-        monitor.subscribe(ApplicationStopping) {
-            runBlocking { job.cancelAndJoin() }
-        }
+    val job = launch(Dispatchers.IO + exceptionHandler) { sisConsumer.kjoer() }
+    monitor.subscribe(ApplicationStopping) {
+        runBlocking { job.cancelAndJoin() }
     }
 }
