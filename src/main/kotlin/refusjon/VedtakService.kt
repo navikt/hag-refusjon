@@ -184,10 +184,11 @@ class VedtakService(
                     sikkerLogger.warn("$it Orgnr: ${melding.organisasjonsnummer}")
                 }
         } else {
-            "Arbeidsgiver har ikke ønsket refusjon. Sender _ikke_ refusjonsutfall til arbeidsgiver for arbeidstakervedtaket med $ider.".also {
-                logger.info(it)
-                sikkerLogger.info("$it Orgnr: ${melding.organisasjonsnummer}")
-            }
+            "Arbeidsgiver har ikke ønsket refusjon. Sender _ikke_ refusjonsutfall til arbeidsgiver for arbeidstakervedtaket med $ider."
+                .also {
+                    logger.info(it)
+                    sikkerLogger.info("$it Orgnr: ${melding.organisasjonsnummer}")
+                }
         }
     }
 }
