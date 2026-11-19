@@ -4,6 +4,8 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.http.HttpStatusCode
 import io.mockk.clearMocks
@@ -62,6 +64,44 @@ class VedtakServiceTest :
             unleashFeatureToggles,
         )
 
+        listOf(
+            "uten utbetaling til arbeidsgiver" to 0,
+            "selv med utbetaling til arbeidsgiver" to 1431,
+        ).forEach { (beskrivelse, beloepTilArbeidsgiver) ->
+            test("gjør ingenting når arbeidsgiver ikke har ønsket refusjon, $beskrivelse") {
+                val bucketStorage = FakeBucketStorage()
+                val mockProducer = mockProducer()
+                val arkivService = arkivServiceMock()
+                val repository = utfallRepositoryMock()
+                val klient = virksomhetsnavnKlientMock()
+                val pdl = pdlServiceMock()
+                mockPdfgen(HttpStatusCode.OK, pdfBytes)
+                val ikkeOensketRefusjon =
+                    melding.copy(
+                        harArbeidsgiverOensketRefusjon = false,
+                        utbetalingsdager = melding.utbetalingsdager.map { it.copy(beloepTilArbeidsgiver = beloepTilArbeidsgiver) },
+                    )
+
+                vedtakService(
+                    bucketStorage,
+                    RefusjonProducer(mockProducer, TEST_TOPIC),
+                    virksomhetsnavnKlient = klient,
+                    pdlService = pdl,
+                    arkivService = arkivService,
+                    repository = repository,
+                ).behandle(ikkeOensketRefusjon)
+
+                repository.hent(melding.behandlingId).shouldBeNull()
+                verify(exactly = 0) { repository.lagre(any(), any()) }
+                bucketStorage.pdfer.size shouldBe 0
+                coVerify(exactly = 0) { arkivService.arkiver(any(), any()) }
+                mockProducer.history().shouldBeEmpty()
+                coVerify(exactly = 0) { refusjonskravService.hentRefusjonskrav(any()) }
+                coVerify(exactly = 0) { klient.hentVirksomhetsnavn(ORGNR) }
+                coVerify(exactly = 0) { pdl.hentSykmeldtnavn(FNR) }
+            }
+        }
+
         test("lagrer utfallet, men hopper over PDF, arkivering og publisering når feature toggle er av") {
             val bucketStorage = FakeBucketStorage()
             val mockProducer = mockProducer()
@@ -70,16 +110,15 @@ class VedtakServiceTest :
             val toggles = unleashFeatureTogglesMock(erJournalfoeringOgDistribusjonSkruddPaa = false)
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
-            val refusjonsutfallId =
-                vedtakService(
-                    bucketStorage,
-                    RefusjonProducer(mockProducer, TEST_TOPIC),
-                    arkivService = arkivService,
-                    repository = repository,
-                    unleashFeatureToggles = toggles,
-                ).behandle(melding)
+            vedtakService(
+                bucketStorage,
+                RefusjonProducer(mockProducer, TEST_TOPIC),
+                arkivService = arkivService,
+                repository = repository,
+                unleashFeatureToggles = toggles,
+            ).behandle(melding)
 
-            repository.hent(melding.behandlingId)?.refusjonUtfallId shouldBe refusjonsutfallId
+            repository.hent(melding.behandlingId).shouldNotBeNull()
             bucketStorage.pdfer.size shouldBe 0
             coVerify(exactly = 0) { arkivService.arkiver(any(), any()) }
             mockProducer.history().shouldBeEmpty()
@@ -95,31 +134,31 @@ class VedtakServiceTest :
             val pdl = pdlServiceMock()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
-            val foersteId =
-                vedtakService(
-                    bucketStorage,
-                    RefusjonProducer(mockProducer, TEST_TOPIC),
-                    virksomhetsnavnKlient = klient,
-                    pdlService = pdl,
-                    arkivService = arkivService,
-                    repository = repository,
-                    unleashFeatureToggles = unleashFeatureTogglesMock(erJournalfoeringOgDistribusjonSkruddPaa = false),
-                ).behandle(melding)
+            vedtakService(
+                bucketStorage,
+                RefusjonProducer(mockProducer, TEST_TOPIC),
+                virksomhetsnavnKlient = klient,
+                pdlService = pdl,
+                arkivService = arkivService,
+                repository = repository,
+                unleashFeatureToggles = unleashFeatureTogglesMock(erJournalfoeringOgDistribusjonSkruddPaa = false),
+            ).behandle(melding)
 
             bucketStorage.pdfer.size shouldBe 0
             mockProducer.history().shouldBeEmpty()
+            val foersteId = checkNotNull(repository.hent(melding.behandlingId)).refusjonUtfallId
 
-            val andreId =
-                vedtakService(
-                    bucketStorage,
-                    RefusjonProducer(mockProducer, TEST_TOPIC),
-                    virksomhetsnavnKlient = klient,
-                    pdlService = pdl,
-                    arkivService = arkivService,
-                    repository = repository,
-                    unleashFeatureToggles = unleashFeatureTogglesMock(erJournalfoeringOgDistribusjonSkruddPaa = true),
-                ).behandle(melding)
+            vedtakService(
+                bucketStorage,
+                RefusjonProducer(mockProducer, TEST_TOPIC),
+                virksomhetsnavnKlient = klient,
+                pdlService = pdl,
+                arkivService = arkivService,
+                repository = repository,
+                unleashFeatureToggles = unleashFeatureTogglesMock(erJournalfoeringOgDistribusjonSkruddPaa = true),
+            ).behandle(melding)
 
+            val andreId = checkNotNull(repository.hent(melding.behandlingId)).refusjonUtfallId
             andreId shouldBe foersteId
             bucketStorage.pdfer[andreId] shouldBe pdfBytes
             coVerify(exactly = 1) { arkivService.arkiver(match { it.refusjonUtfallId == andreId }, pdfBytes) }
@@ -135,23 +174,23 @@ class VedtakServiceTest :
             val pdl = pdlServiceMock()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
-            val foersteId =
-                vedtakService(
-                    bucketStorage,
-                    virksomhetsnavnKlient = klient,
-                    pdlService = pdl,
-                    repository = repository,
-                ).behandle(melding)
-            val andreId =
-                vedtakService(
-                    bucketStorage,
-                    virksomhetsnavnKlient = klient,
-                    pdlService = pdl,
-                    repository = repository,
-                ).behandle(melding)
+            vedtakService(
+                bucketStorage,
+                virksomhetsnavnKlient = klient,
+                pdlService = pdl,
+                repository = repository,
+            ).behandle(melding)
+            val foersteId = checkNotNull(repository.hent(melding.behandlingId)).refusjonUtfallId
 
-            andreId shouldBe foersteId
+            vedtakService(
+                bucketStorage,
+                virksomhetsnavnKlient = klient,
+                pdlService = pdl,
+                repository = repository,
+            ).behandle(melding)
+
             repository.hent(melding.behandlingId)?.refusjonUtfallId shouldBe foersteId
+            verify(exactly = 1) { repository.lagre(any(), any()) }
             coVerify(exactly = 1) { klient.hentVirksomhetsnavn(ORGNR) }
             coVerify(exactly = 1) { pdl.hentSykmeldtnavn(FNR) }
         }
@@ -162,7 +201,8 @@ class VedtakServiceTest :
             val arkivService = arkivServiceMock()
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
-            val refusjonsutfallId = vedtakService(bucketStorage, arkivService = arkivService, repository = repository).behandle(melding)
+            vedtakService(bucketStorage, arkivService = arkivService, repository = repository).behandle(melding)
+            val refusjonsutfallId = checkNotNull(repository.hent(melding.behandlingId)).refusjonUtfallId
 
             // Hvis PDF-en ble generert på nytt ville den fått dette innholdet.
             mockPdfgen(HttpStatusCode.OK, "Annet innhold".toByteArray())
@@ -186,9 +226,8 @@ class VedtakServiceTest :
                 }
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
-            val refusjonsutfallId = vedtakService(bucketStorage, repository = repository).behandle(melding)
+            vedtakService(bucketStorage, repository = repository).behandle(melding)
 
-            refusjonsutfallId shouldBe eksisterende.refusjonUtfallId
             bucketStorage.pdfer.keys shouldBe setOf(eksisterende.refusjonUtfallId)
         }
 
@@ -216,10 +255,10 @@ class VedtakServiceTest :
             val producer = spyk(RefusjonProducer(mockProducer, TEST_TOPIC))
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
-            val refusjonsutfallId =
-                vedtakService(bucketStorage, producer, arkivService = arkivService, repository = repository)
-                    .behandle(melding)
+            vedtakService(bucketStorage, producer, arkivService = arkivService, repository = repository)
+                .behandle(melding)
 
+            val refusjonsutfallId = checkNotNull(repository.hent(melding.behandlingId)).refusjonUtfallId
             bucketStorage.pdfer[refusjonsutfallId] shouldBe pdfBytes
             repository.hentJournalpostId(refusjonsutfallId) shouldBe JOURNALPOST_ID
             coVerifyOrder {
@@ -289,7 +328,7 @@ class VedtakServiceTest :
                 RefusjonProducer(producer, TEST_TOPIC),
                 arkivService = arkivService,
                 repository = repository,
-            ).behandle(melding) shouldBe refusjonsutfallId
+            ).behandle(melding)
 
             coVerify(exactly = 1) { arkivService.arkiver(any(), pdfBytes) }
             verify(exactly = 1) { repository.lagreJournalpostId(refusjonsutfallId, JOURNALPOST_ID) }
@@ -318,7 +357,7 @@ class VedtakServiceTest :
             repository.hentJournalpostId(refusjonsutfallId) shouldBe null
 
             every { repository.lagreJournalpostId(refusjonsutfallId, JOURNALPOST_ID) } returns Unit
-            service.behandle(melding) shouldBe refusjonsutfallId
+            service.behandle(melding)
 
             coVerify(exactly = 2) { arkivService.arkiver(any(), pdfBytes) }
             producer.history() shouldHaveSize 1

@@ -13,7 +13,6 @@ import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 import no.nav.helsearbeidsgiver.virksomhet.VirksomhetsnavnKlient
 import org.slf4j.LoggerFactory
 import java.util.UUID
-import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 
 class VedtakService(
@@ -29,11 +28,16 @@ class VedtakService(
     private val logger = LoggerFactory.getLogger(VedtakService::class.java)
     private val sikkerLogger = sikkerLogger()
 
-    suspend fun behandle(melding: ArbeidstakerVedtakMelding): Uuid {
+    suspend fun behandle(melding: ArbeidstakerVedtakMelding) {
         sikkerLogger.info(
             "Behandler arbeidstakervedtak med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}:\n" +
                 melding.toJson(ArbeidstakerVedtakMelding.serializer()).toPretty(),
         )
+
+        if (!melding.harArbeidsgiverOensketRefusjon) {
+            loggArbeidsgiverOenskerIkkeRefusjon(melding)
+            return
+        }
 
         val refusjonUtfall =
             refusjonUtfallRepository.hent(melding.behandlingId)
@@ -46,7 +50,7 @@ class VedtakService(
                     "Hopper over PDF-generering og lagring, arkivering og publisering for refusjonsutfallId $refusjonUtfallId " +
                     "og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
             )
-            return refusjonUtfallId
+            return
         }
 
         val pdf =
@@ -106,8 +110,6 @@ class VedtakService(
         sikkerLogger.info(
             "Publiserte refusjonsutfall med refusjonsutfallId $refusjonUtfallId og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
         )
-
-        return refusjonUtfallId
     }
 
     private suspend fun hentDataOgLagreRefusjonUtfall(melding: ArbeidstakerVedtakMelding): RefusjonUtfall {
@@ -169,5 +171,24 @@ class VedtakService(
         logger.error(melding)
         sikkerLogger.error(melding, feil)
         return IllegalStateException(melding, feil)
+    }
+
+    private fun loggArbeidsgiverOenskerIkkeRefusjon(melding: ArbeidstakerVedtakMelding) {
+        val harUtbetalingTilArbeidsgiver = melding.utbetalingsdager.any { it.beloepTilArbeidsgiver > 0 }
+        val ider = "behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}"
+
+        if (harUtbetalingTilArbeidsgiver) {
+            "Arbeidsgiver har ikke ønsket refusjon, men arbeidstakervedtaket med $ider har likevel utbetaling til arbeidsgiver. " +
+                "Sender _ikke_ refusjonsutfall til arbeidsgiver.".also {
+                    logger.warn(it)
+                    sikkerLogger.warn("$it Orgnr: ${melding.organisasjonsnummer}")
+                }
+        } else {
+            "Arbeidsgiver har ikke ønsket refusjon. Sender _ikke_ refusjonsutfall til arbeidsgiver for arbeidstakervedtaket med $ider."
+                .also {
+                    logger.info(it)
+                    sikkerLogger.info("$it Orgnr: ${melding.organisasjonsnummer}")
+                }
+        }
     }
 }

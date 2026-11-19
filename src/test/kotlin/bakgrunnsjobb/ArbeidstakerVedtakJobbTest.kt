@@ -11,12 +11,11 @@ import no.nav.helsearbeidsgiver.refusjon.ORGNR
 import no.nav.helsearbeidsgiver.refusjon.VedtakService
 import no.nav.helsearbeidsgiver.refusjon.gyldigMelding
 import no.nav.helsearbeidsgiver.utils.json.parseJson
-import kotlin.uuid.Uuid
 
 class ArbeidstakerVedtakJobbTest :
     FunSpec({
         test("prosesser behandler meldingen i jobben med VedtakService") {
-            val vedtakService = mockk<VedtakService> { coEvery { behandle(any()) } returns Uuid.random() }
+            val vedtakService = mockk<VedtakService> { coEvery { behandle(any()) } returns Unit }
             val jobb = Bakgrunnsjobb(type = JOB_TYPE, dataJson = gyldigMelding(FNR, ORGNR).parseJson())
 
             ArbeidstakerVedtakJobb(vedtakService).prosesser(jobb)
