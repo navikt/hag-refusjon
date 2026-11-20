@@ -131,7 +131,7 @@ class VedtakServiceTest :
                     }
 
                 feil.cause.shouldBeInstanceOf<UgyldigArbeidstakerVedtakException>().feil shouldBe
-                    listOf(ArbeidstakerVedtakValideringsfeil.MANGLER_SYKMELDING)
+                    listOf(ArbeidstakerVedtakValideringFeil.MANGLER_SYKMELDING)
                 verify(exactly = 0) { repository.hent(any()) }
                 verify(exactly = 0) { repository.lagre(any(), any()) }
                 bucketStorage.pdfer.size shouldBe 0

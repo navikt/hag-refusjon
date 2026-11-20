@@ -36,7 +36,7 @@ class ArbeidstakerVedtakValidatorTest :
         test("krever minst én sykmelding") {
             ArbeidstakerVedtakValidator
                 .valider(melding.copy(dokumenter = emptyList()))
-                .shouldContainExactly(ArbeidstakerVedtakValideringsfeil.MANGLER_SYKMELDING)
+                .shouldContainExactly(ArbeidstakerVedtakValideringFeil.MANGLER_SYKMELDING)
         }
 
         test("avviser negativt beløp til arbeidsgiver") {
@@ -44,7 +44,7 @@ class ArbeidstakerVedtakValidatorTest :
 
             ArbeidstakerVedtakValidator
                 .valider(melding.copy(utbetalingsdager = listOf(ugyldig)))
-                .shouldContainExactly(ArbeidstakerVedtakValideringsfeil.NEGATIVT_BELOEP_TIL_ARBEIDSGIVER)
+                .shouldContainExactly(ArbeidstakerVedtakValideringFeil.NEGATIVT_BELOEP_TIL_ARBEIDSGIVER)
         }
 
         test("avviser positivt beløp til arbeidsgiver på dagtyper der vi ikke forventer det") {
@@ -52,7 +52,7 @@ class ArbeidstakerVedtakValidatorTest :
 
             ArbeidstakerVedtakValidator
                 .valider(melding.copy(utbetalingsdager = listOf(ugyldig)))
-                .shouldContainExactly(ArbeidstakerVedtakValideringsfeil.UVENTET_UTBETALING_TIL_ARBEIDSGIVER_PAA_DAGTYPE)
+                .shouldContainExactly(ArbeidstakerVedtakValideringFeil.UVENTET_UTBETALING_TIL_ARBEIDSGIVER_PAA_DAGTYPE)
         }
 
         test("avviser vedtaksperiode med fom etter tom") {
@@ -60,8 +60,8 @@ class ArbeidstakerVedtakValidatorTest :
             ArbeidstakerVedtakValidator
                 .valider(melding.copy(fom = melding.tom.plusDays(1)))
                 .shouldContainExactlyInAnyOrder(
-                    ArbeidstakerVedtakValideringsfeil.UGYLDIG_PERIODE,
-                    ArbeidstakerVedtakValideringsfeil.UTBETALINGSDAG_UTENFOR_VEDTAKSPERIODE,
+                    ArbeidstakerVedtakValideringFeil.UGYLDIG_PERIODE,
+                    ArbeidstakerVedtakValideringFeil.UTBETALINGSDAG_UTENFOR_VEDTAKSPERIODE,
                 )
         }
 
@@ -75,14 +75,14 @@ class ArbeidstakerVedtakValidatorTest :
             withData(0.0, -1.0) { anvendtSeksG ->
                 ArbeidstakerVedtakValidator
                     .valider(melding.copy(anvendtSeksG = anvendtSeksG))
-                    .shouldContainExactly(ArbeidstakerVedtakValideringsfeil.UGYLDIG_ANVENDT_SEKS_G)
+                    .shouldContainExactly(ArbeidstakerVedtakValideringFeil.UGYLDIG_ANVENDT_SEKS_G)
             }
         }
 
         test("avviser negativt sykepengegrunnlag") {
             ArbeidstakerVedtakValidator
                 .valider(melding.copy(sykepengegrunnlag = -0.01))
-                .shouldContainExactly(ArbeidstakerVedtakValideringsfeil.NEGATIVT_SYKEPENGEGRUNNLAG)
+                .shouldContainExactly(ArbeidstakerVedtakValideringFeil.NEGATIVT_SYKEPENGEGRUNNLAG)
         }
 
         test("godtar sykepengegrunnlag på 0") {
@@ -94,7 +94,7 @@ class ArbeidstakerVedtakValidatorTest :
         test("krever minst én utbetalingsdag") {
             ArbeidstakerVedtakValidator
                 .valider(melding.copy(utbetalingsdager = emptyList()))
-                .shouldContainExactly(ArbeidstakerVedtakValideringsfeil.MANGLER_UTBETALINGSDAGER)
+                .shouldContainExactly(ArbeidstakerVedtakValideringFeil.MANGLER_UTBETALINGSDAGER)
         }
 
         test("avviser utbetalingsdag utenfor vedtaksperioden") {
@@ -102,7 +102,7 @@ class ArbeidstakerVedtakValidatorTest :
 
             ArbeidstakerVedtakValidator
                 .valider(melding.copy(utbetalingsdager = listOf(ugyldig)))
-                .shouldContainExactly(ArbeidstakerVedtakValideringsfeil.UTBETALINGSDAG_UTENFOR_VEDTAKSPERIODE)
+                .shouldContainExactly(ArbeidstakerVedtakValideringFeil.UTBETALINGSDAG_UTENFOR_VEDTAKSPERIODE)
         }
 
         test("avviser duplikate utbetalingsdatoer") {
@@ -110,14 +110,24 @@ class ArbeidstakerVedtakValidatorTest :
 
             ArbeidstakerVedtakValidator
                 .valider(melding.copy(utbetalingsdager = listOf(dag, dag.copy())))
-                .shouldContainExactly(ArbeidstakerVedtakValideringsfeil.DUPLIKAT_UTBETALINGSDATO)
+                .shouldContainExactly(ArbeidstakerVedtakValideringFeil.DUPLIKAT_UTBETALINGSDATO)
         }
 
-        test("avviser sykdomsgrad utenfor 0 til 100 uavhengig av dagtype") {
-            val ugyldig = utbetalingsdagMock(type = Utbetalingsdagtype.FERIEDAG, sykdomsgrad = 101, beloepTilArbeidsgiver = 0)
+        context("avviser sykdomsgrad utenfor 0 til 100 på dager som kan inngå i en daggruppe") {
+            withData(-1, 101) { sykdomsgrad ->
+                val ugyldig = utbetalingsdagMock(sykdomsgrad = sykdomsgrad)
+
+                ArbeidstakerVedtakValidator
+                    .valider(melding.copy(utbetalingsdager = listOf(ugyldig)))
+                    .shouldContainExactly(ArbeidstakerVedtakValideringFeil.UGYLDIG_SYKDOMSGRAD)
+            }
+        }
+
+        test("godtar sykdomsgrad utenfor 0 til 100 på dager utenfor daggruppene") {
+            val dag = utbetalingsdagMock(type = Utbetalingsdagtype.FERIEDAG, sykdomsgrad = 101, beloepTilArbeidsgiver = 0)
 
             ArbeidstakerVedtakValidator
-                .valider(melding.copy(utbetalingsdager = listOf(ugyldig)))
-                .shouldContainExactly(ArbeidstakerVedtakValideringsfeil.UGYLDIG_SYKDOMSGRAD)
+                .valider(melding.copy(utbetalingsdager = listOf(dag)))
+                .shouldBeEmpty()
         }
     })

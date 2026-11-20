@@ -48,34 +48,21 @@ private fun Utbetalingsdag.tilSykepengeStatus(
     refusjonskravPerMaaned: Double?,
     anvendtSeksG: BigDecimal,
 ): SykepengeStatus? =
-    when (type) {
-        Utbetalingsdagtype.NAV_DAG -> {
+    when (type.tilDagkategori()) {
+        Dagkategori.MED_RETT_TIL_SYKEPENGER -> {
             tilStatusMedRettTilSykepenger(refusjonskravPerMaaned, anvendtSeksG)
         }
 
         // Spleis slår sammen de to arbeidsgiverperiodetypene, så beloepTilArbeidsgiver avgjør om Nav dekker dagen.
-        Utbetalingsdagtype.ARBEIDSGIVERPERIODE_DAG,
-        Utbetalingsdagtype.ARBEIDSGIVERPERIODEDAG_NAV,
-        -> {
+        Dagkategori.ARBEIDSGIVERPERIODE -> {
             if (beloepTilArbeidsgiver > 0) tilStatusMedRettTilSykepenger(refusjonskravPerMaaned, anvendtSeksG) else null
         }
 
-        Utbetalingsdagtype.AVVIST_DAG,
-        Utbetalingsdagtype.FORELDET_DAG,
-        -> {
+        Dagkategori.UTEN_RETT_TIL_SYKEPENGER -> {
             SykepengeStatus.IKKE_RETT_TIL_SYKEPENGER
         }
 
-        Utbetalingsdagtype.NAV_HELG_DAG,
-        Utbetalingsdagtype.FRIDAG,
-        Utbetalingsdagtype.FERIEDAG,
-        Utbetalingsdagtype.PERMISJONSDAG,
-        Utbetalingsdagtype.ARBEIDSDAG,
-        Utbetalingsdagtype.VENTETIDSDAG,
-        Utbetalingsdagtype.ARBEID_IKKE_GJENOPPTATT_DAG,
-        Utbetalingsdagtype.ANDRE_YTELSER,
-        Utbetalingsdagtype.UKJENT_DAG,
-        -> {
+        Dagkategori.UTENFOR_DAGGRUPPER -> {
             null
         }
     }
