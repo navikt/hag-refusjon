@@ -7,6 +7,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.HttpStatusCode
 import io.mockk.clearMocks
 import io.mockk.coEvery
@@ -92,6 +93,46 @@ class VedtakServiceTest :
                 ).behandle(ikkeOensketRefusjon)
 
                 repository.hent(melding.behandlingId).shouldBeNull()
+                verify(exactly = 0) { repository.lagre(any(), any()) }
+                bucketStorage.pdfer.size shouldBe 0
+                coVerify(exactly = 0) { arkivService.arkiver(any(), any()) }
+                mockProducer.history().shouldBeEmpty()
+                coVerify(exactly = 0) { refusjonskravService.hentRefusjonskrav(any()) }
+                coVerify(exactly = 0) { klient.hentVirksomhetsnavn(ORGNR) }
+                coVerify(exactly = 0) { pdl.hentSykmeldtnavn(FNR) }
+            }
+        }
+
+        listOf(true, false).forEach { harArbeidsgiverOensketRefusjon ->
+            test("feiler uten sideeffekter når vedtaket er ugyldig (ønsket refusjon: $harArbeidsgiverOensketRefusjon)") {
+                val bucketStorage = FakeBucketStorage()
+                val mockProducer = mockProducer()
+                val arkivService = arkivServiceMock()
+                val repository = utfallRepositoryMock()
+                val klient = virksomhetsnavnKlientMock()
+                val pdl = pdlServiceMock()
+                mockPdfgen(HttpStatusCode.OK, pdfBytes)
+                val ugyldigVedtak =
+                    melding.copy(
+                        dokumenter = emptyList(),
+                        harArbeidsgiverOensketRefusjon = harArbeidsgiverOensketRefusjon,
+                    )
+
+                val feil =
+                    shouldThrow<IllegalStateException> {
+                        vedtakService(
+                            bucketStorage,
+                            RefusjonProducer(mockProducer, TEST_TOPIC),
+                            virksomhetsnavnKlient = klient,
+                            pdlService = pdl,
+                            arkivService = arkivService,
+                            repository = repository,
+                        ).behandle(ugyldigVedtak)
+                    }
+
+                feil.cause.shouldBeInstanceOf<UgyldigArbeidstakerVedtakException>().feil shouldBe
+                    listOf(ArbeidstakerVedtakValideringsfeil.MANGLER_SYKMELDING)
+                verify(exactly = 0) { repository.hent(any()) }
                 verify(exactly = 0) { repository.lagre(any(), any()) }
                 bucketStorage.pdfer.size shouldBe 0
                 coVerify(exactly = 0) { arkivService.arkiver(any(), any()) }

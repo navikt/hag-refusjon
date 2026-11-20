@@ -31,8 +31,10 @@ class VedtakService(
     suspend fun behandle(melding: ArbeidstakerVedtakMelding) {
         sikkerLogger.info(
             "Behandler arbeidstakervedtak med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}:\n" +
-                melding.toJson(ArbeidstakerVedtakMelding.serializer()).toPretty(),
+                    melding.toJson(ArbeidstakerVedtakMelding.serializer()).toPretty(),
         )
+
+        validerArbeidstakerVedtak(melding)
 
         if (!melding.harArbeidsgiverOensketRefusjon) {
             loggArbeidsgiverOenskerIkkeRefusjon(melding)
@@ -47,8 +49,8 @@ class VedtakService(
         if (!unleashFeatureToggles.skalJournalfoereOgDistribuereRefusjon(melding.organisasjonsnummer)) {
             sikkerLogger.info(
                 "Feature toggle for journalføring og distribusjon er av for orgnr ${melding.organisasjonsnummer}. " +
-                    "Hopper over PDF-generering og lagring, arkivering og publisering for refusjonsutfallId $refusjonUtfallId " +
-                    "og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+                        "Hopper over PDF-generering og lagring, arkivering og publisering for refusjonsutfallId $refusjonUtfallId " +
+                        "og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
             )
             return
         }
@@ -164,6 +166,21 @@ class VedtakService(
         }
     }
 
+    private fun validerArbeidstakerVedtak(melding: ArbeidstakerVedtakMelding) {
+        val valideringsfeil = ArbeidstakerVedtakValidator.valider(melding)
+        if (valideringsfeil.isEmpty()) {
+            return
+        } else {
+            val exception =
+                UgyldigArbeidstakerVedtakException(
+                    behandlingId = melding.behandlingId,
+                    vedtaksperiodeId = melding.vedtaksperiodeId,
+                    feil = valideringsfeil,
+                )
+            throw loggOgKast(exception.message, exception)
+        }
+    }
+
     private fun loggOgKast(
         melding: String,
         feil: Exception,
@@ -179,10 +196,10 @@ class VedtakService(
 
         if (harUtbetalingTilArbeidsgiver) {
             "Arbeidsgiver har ikke ønsket refusjon, men arbeidstakervedtaket med $ider har likevel utbetaling til arbeidsgiver. " +
-                "Sender _ikke_ refusjonsutfall til arbeidsgiver.".also {
-                    logger.warn(it)
-                    sikkerLogger.warn("$it Orgnr: ${melding.organisasjonsnummer}")
-                }
+                    "Sender _ikke_ refusjonsutfall til arbeidsgiver.".also {
+                        logger.warn(it)
+                        sikkerLogger.warn("$it Orgnr: ${melding.organisasjonsnummer}")
+                    }
         } else {
             "Arbeidsgiver har ikke ønsket refusjon. Sender _ikke_ refusjonsutfall til arbeidsgiver for arbeidstakervedtaket med $ider."
                 .also {
