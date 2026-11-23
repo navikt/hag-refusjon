@@ -5,6 +5,7 @@ import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
 import no.nav.helsearbeidsgiver.refusjon.SisEventName
 import no.nav.helsearbeidsgiver.refusjon.Yrkesaktivitetstype
 import no.nav.helsearbeidsgiver.utils.json.fromJson
+import no.nav.helsearbeidsgiver.utils.log.sikkerLogger
 
 class SisTolker {
     fun lesMelding(melding: String): ArbeidstakerVedtakMelding? {
@@ -18,8 +19,12 @@ class SisTolker {
         if (yrkesaktivitetstype != Yrkesaktivitetstype.ARBEIDSTAKER) {
             return null
         }
-
-        return melding.fromJson(ArbeidstakerVedtakMelding.serializer())
+        runCatching {
+            return melding.fromJson(ArbeidstakerVedtakMelding.serializer())
+        }.onFailure {
+            sikkerLogger().error(melding, it)
+        }
+        return null // Med dette mister vi meldingen, går ikke i crash-loop ved feilparsing
     }
 }
 

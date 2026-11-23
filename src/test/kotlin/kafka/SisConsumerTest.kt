@@ -188,8 +188,11 @@ class SisConsumerTest :
 
         test("avviser vedtak uten behandlingId") {
             val json = vedtakJson().replace("\"behandlingId\"", "\"annenId\"")
-
-            shouldThrow<SerializationException> { tolker.lesMelding(json) }
+            tolker.lesMelding(json) shouldBe null
+            // TODO: Vi bør ha en "snill" parsing, deretter validering.
+            // Per nå går vi videre når vi ikke klarer å parse meldingen,
+            // heller enn å kaste exception
+            // shouldThrow<SerializationException> { tolker.lesMelding(json) }
         }
 
         test("lagrer vedtak og oppretter bakgrunnsjobb før offset bekreftes") {
