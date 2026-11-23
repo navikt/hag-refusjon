@@ -71,8 +71,8 @@ class ArbeidstakerVedtakValidatorTest :
                 .shouldBeEmpty()
         }
 
-        context("avviser anvendt 6G som ikke er større enn 0") {
-            withData(0.0, -1.0) { anvendtSeksG ->
+        context("avviser anvendt 6G som mangler eller ikke er større enn 0") {
+            withData(null, 0.0, -1.0) { anvendtSeksG ->
                 ArbeidstakerVedtakValidator
                     .valider(melding.copy(anvendtSeksG = anvendtSeksG))
                     .shouldContainExactly(ArbeidstakerVedtakValideringFeil.UGYLDIG_ANVENDT_SEKS_G)

@@ -25,7 +25,7 @@ enum class ArbeidstakerVedtakValideringRegel(
     ),
     ANVENDT_SEKS_G_ER_POSITIV(
         ArbeidstakerVedtakValideringFeil.UGYLDIG_ANVENDT_SEKS_G,
-        { anvendtSeksG > 0 },
+        { anvendtSeksG != null && anvendtSeksG > 0 },
     ),
     SYKEPENGEGRUNNLAG_ER_IKKE_NEGATIVT(
         ArbeidstakerVedtakValideringFeil.NEGATIVT_SYKEPENGEGRUNNLAG,
