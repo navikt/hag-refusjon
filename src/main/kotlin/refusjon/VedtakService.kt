@@ -34,6 +34,8 @@ class VedtakService(
                 melding.toJson(ArbeidstakerVedtakMelding.serializer()).toPretty(),
         )
 
+        validerArbeidstakerVedtak(melding)
+
         if (!melding.harArbeidsgiverOensketRefusjon) {
             loggArbeidsgiverOenskerIkkeRefusjon(melding)
             return
@@ -161,6 +163,21 @@ class VedtakService(
                 "Feil ved lagring av refusjonsutfall med behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
                 e,
             )
+        }
+    }
+
+    private fun validerArbeidstakerVedtak(melding: ArbeidstakerVedtakMelding) {
+        val valideringsfeil = ArbeidstakerVedtakValidator.valider(melding)
+        if (valideringsfeil.isEmpty()) {
+            return
+        } else {
+            val exception =
+                UgyldigArbeidstakerVedtakException(
+                    behandlingId = melding.behandlingId,
+                    vedtaksperiodeId = melding.vedtaksperiodeId,
+                    feil = valideringsfeil,
+                )
+            throw loggOgKast(exception.message, exception)
         }
     }
 

@@ -13,6 +13,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
     sykmeldtNavn: String,
 ): RefusjonUtfall {
     val refusjonskravPerInntektsmelding = refusjonskrav.associate { it.inntektsmeldingId to it.refusjonskrav }
+    val anvendtSeksG = checkNotNull(anvendtSeksG) { "anvendtSeksG mangler, skulle vært fanget av valideringen" }
     val daggrupper = utbetalingsdager.tilDaggrupper(refusjonskravPerInntektsmelding, anvendtSeksG.toBigDecimal())
 
     return RefusjonUtfall(
