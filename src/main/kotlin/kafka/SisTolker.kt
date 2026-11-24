@@ -1,6 +1,7 @@
 package no.nav.helsearbeidsgiver.kafka
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import no.nav.helsearbeidsgiver.refusjon.ArbeidstakerVedtakMelding
 import no.nav.helsearbeidsgiver.refusjon.SisEventName
 import no.nav.helsearbeidsgiver.refusjon.Yrkesaktivitetstype
@@ -19,12 +20,12 @@ class SisTolker {
         if (yrkesaktivitetstype != Yrkesaktivitetstype.ARBEIDSTAKER) {
             return null
         }
-        runCatching {
+        try {
             return melding.fromJson(ArbeidstakerVedtakMelding.serializer())
-        }.onFailure {
-            sikkerLogger().error(melding, it)
+        } catch (e: SerializationException) {
+            sikkerLogger().error("Klarte ikke å parse melding: $melding", e)
+            throw e
         }
-        return null // Med dette mister vi meldingen, går ikke i crash-loop ved feilparsing
     }
 }
 
