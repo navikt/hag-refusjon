@@ -147,4 +147,12 @@ class RefusjonUtfallMapperTest :
                 melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
             }
         }
+
+        test("manglende anvendt 6G kaster exception") {
+            val melding = arbeidstakerVedtakMeldingMock(fnr, orgnr).copy(anvendtSeksG = null)
+
+            shouldThrow<IllegalStateException> {
+                melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+            }
+        }
     })
