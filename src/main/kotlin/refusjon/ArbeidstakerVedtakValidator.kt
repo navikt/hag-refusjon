@@ -27,7 +27,7 @@ enum class ArbeidstakerVedtakValideringRegel(
         ArbeidstakerVedtakValideringFeil.UGYLDIG_ANVENDT_SEKS_G,
         { anvendtSeksG != null && anvendtSeksG > 0 },
     ),
-    SYKEPENGEGRUNNLAG_ER_IKKE_NEGATIVT(
+    SYKEPENGEGRUNNLAG_ER_POSITIVT(
         ArbeidstakerVedtakValideringFeil.NEGATIVT_SYKEPENGEGRUNNLAG,
         { sykepengegrunnlag >= 0 },
     ),
@@ -35,7 +35,7 @@ enum class ArbeidstakerVedtakValideringRegel(
         ArbeidstakerVedtakValideringFeil.MANGLER_UTBETALINGSDAGER,
         { utbetalingsdager.isNotEmpty() },
     ),
-    BELOEP_TIL_ARBEIDSGIVER_ER_IKKE_NEGATIVT(
+    BELOEP_TIL_ARBEIDSGIVER_ER_POSITIVT(
         ArbeidstakerVedtakValideringFeil.NEGATIVT_BELOEP_TIL_ARBEIDSGIVER,
         { utbetalingsdager.all { it.beloepTilArbeidsgiver >= 0 } },
     ),
@@ -60,16 +60,16 @@ enum class ArbeidstakerVedtakValideringRegel(
 enum class ArbeidstakerVedtakValideringFeil(
     val beskrivelse: String,
 ) {
-    MANGLER_SYKMELDING("Vedtaket mangler referanse til sykmelding"),
-    UGYLDIG_PERIODE("Fra-og-med-dato er etter til-og-med-dato"),
-    UGYLDIG_ANVENDT_SEKS_G("Anvendt 6G er null eller lavere"),
-    NEGATIVT_SYKEPENGEGRUNNLAG("Sykepengegrunnlaget er negativt"),
-    MANGLER_UTBETALINGSDAGER("Vedtaket mangler utbetalingsdager"),
-    NEGATIVT_BELOEP_TIL_ARBEIDSGIVER("Beløp til arbeidsgiver er negativt på minst én utbetalingsdag"),
-    UVENTET_UTBETALING_TIL_ARBEIDSGIVER_PAA_DAGTYPE("Utbetaling til arbeidsgiver på minst én dagtype der det ikke er forventet"),
-    UTBETALINGSDAG_UTENFOR_VEDTAKSPERIODE("Minst én utbetalingsdag ligger utenfor vedtaksperioden"),
-    DUPLIKAT_UTBETALINGSDATO("Samme utbetalingsdato forekommer flere ganger"),
-    UGYLDIG_SYKDOMSGRAD("Sykdomsgrad er under 0 eller over 100 på minst én dag som kan inngå i en daggruppe"),
+    MANGLER_SYKMELDING("Vedtaket mangler referanse til sykmelding."),
+    UGYLDIG_PERIODE("Fra-og-med-dato er etter til-og-med-dato."),
+    UGYLDIG_ANVENDT_SEKS_G("Anvendt 6G er negativt eller udefinert (null)."),
+    NEGATIVT_SYKEPENGEGRUNNLAG("Sykepengegrunnlaget er negativt."),
+    MANGLER_UTBETALINGSDAGER("Vedtaket mangler utbetalingsdager."),
+    NEGATIVT_BELOEP_TIL_ARBEIDSGIVER("Beløp til arbeidsgiver er negativt på minst én utbetalingsdag."),
+    UVENTET_UTBETALING_TIL_ARBEIDSGIVER_PAA_DAGTYPE("Utbetaling til arbeidsgiver på minst én dagtype der det ikke er forventet."),
+    UTBETALINGSDAG_UTENFOR_VEDTAKSPERIODE("Minst én utbetalingsdag ligger utenfor vedtaksperioden."),
+    DUPLIKAT_UTBETALINGSDATO("Samme utbetalingsdato forekommer flere ganger."),
+    UGYLDIG_SYKDOMSGRAD("Sykdomsgrad er under 0 eller over 100 på minst én dag som kan inngå i en daggruppe."),
 }
 
 class UgyldigArbeidstakerVedtakException(
