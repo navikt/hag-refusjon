@@ -369,6 +369,42 @@ class VedtakServiceTest :
             utfall.arbeidstakerVedtakMelding shouldBe melding
         }
 
+        test("oppretter og publiserer refusjonsutfall uten inntektsmeldingreferanser") {
+            val meldingUtenInntektsmelding =
+                melding.copy(
+                    utbetalingsdager =
+                        melding.utbetalingsdager.map {
+                            it.copy(forespurtRefusjon = it.forespurtRefusjon.copy(hagInntektsmeldingReferanse = null))
+                        },
+                )
+            val bucketStorage = FakeBucketStorage()
+            val mockProducer = mockProducer()
+            val arkivService = arkivServiceMock()
+            val repository = utfallRepositoryMock()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            vedtakService(
+                bucketStorage,
+                RefusjonProducer(mockProducer, TEST_TOPIC),
+                arkivService = arkivService,
+                repository = repository,
+            ).behandle(meldingUtenInntektsmelding)
+
+            val utfall =
+                mockProducer
+                    .history()
+                    .single()
+                    .value()
+                    .parseJson()
+                    .fromJson(RefusjonUtfall.serializer())
+            utfall.inntektsmeldingIder.shouldBeEmpty()
+            utfall.refusjonskrav.shouldBeNull()
+            utfall.sykmeldingId shouldBe meldingUtenInntektsmelding.dokumenter.first { it.type == Dokument.Type.Sykmelding }.dokumentId
+            bucketStorage.pdfer[utfall.refusjonUtfallId] shouldBe pdfBytes
+            repository.hent(melding.behandlingId) shouldBe utfall
+            coVerify(exactly = 1) { arkivService.arkiver(any(), pdfBytes) }
+        }
+
         test("feiler og publiserer ingenting når publisering til Kafka feiler") {
             val mockProducer = mockProducer(autoComplete = false).apply { sendException = RuntimeException("kafka nede") }
             mockPdfgen(HttpStatusCode.OK, pdfBytes)

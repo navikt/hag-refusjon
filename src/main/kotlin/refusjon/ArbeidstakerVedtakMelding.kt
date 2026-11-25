@@ -109,6 +109,7 @@ enum class Avsender {
     ARBEIDSGIVER,
     SAKSBEHANDLER,
     UKJENT,
+    SYSTEM,
 }
 
 object AvsenderSerializer : FallbackEnumSerializer<Avsender>(
