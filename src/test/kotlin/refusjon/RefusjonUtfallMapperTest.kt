@@ -165,7 +165,8 @@ class RefusjonUtfallMapperTest :
             val melding = arbeidstakerVedtakMeldingMock(fnr, orgnr)
 
             melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann").erRevurdering shouldBe false
-            melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann", erRevurdering = true)
+            melding
+                .tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann", erRevurdering = true)
                 .erRevurdering shouldBe true
         }
 
