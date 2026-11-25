@@ -49,6 +49,7 @@ class RefusjonUtfallPdfDataTest :
                     arbeidstakerVedtakMeldingMock(Fnr.genererGyldig(), Orgnr.genererGyldig())
                         .tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann")
                         .copy(
+                            refusjonskrav = Refusjonskrav(beloepPerMaaned = 30000.0, endringer = emptyList()),
                             daggrupper =
                                 statuser.map {
                                     Daggruppe(
@@ -63,5 +64,15 @@ class RefusjonUtfallPdfDataTest :
 
                 refusjonUtfall.tilRefusjonUtfallPdfData().utbetalingKanVaereLavereEnnForventet shouldBe forventet
             }
+        }
+
+        test("utbetalingKanVaereLavereEnnForventet er true om refusjonsutfallet har ingen refusjonskrav (ingen inntektsmelding brukt)") {
+            val refusjonUtfall =
+                arbeidstakerVedtakMeldingMock(Fnr.genererGyldig(), Orgnr.genererGyldig())
+                    .tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann")
+                    .copy(daggrupper = emptyList())
+
+            refusjonUtfall.refusjonskrav shouldBe null
+            refusjonUtfall.tilRefusjonUtfallPdfData().utbetalingKanVaereLavereEnnForventet shouldBe true
         }
     })

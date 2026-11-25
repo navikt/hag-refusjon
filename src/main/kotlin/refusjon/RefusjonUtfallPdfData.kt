@@ -41,6 +41,7 @@ fun RefusjonUtfall.tilRefusjonUtfallPdfData(): RefusjonUtfallPdfData =
         daggrupper = daggrupper,
         refusjonskrav = refusjonskrav,
         beloepUtbetaltTilArbeidsgiver = beloepUtbetaltTilArbeidsgiver,
-        utbetalingKanVaereLavereEnnForventet = daggrupper.any { it.sykepengeStatus == SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE } || refusjonskrav == null,
+        utbetalingKanVaereLavereEnnForventet =
+            daggrupper.any { it.sykepengeStatus == SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE } || refusjonskrav == null,
         arbeidstakervedtakFattetTidspunkt = arbeidstakervedtakFattetTidspunkt,
     )
