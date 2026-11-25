@@ -3,8 +3,13 @@ package no.nav.helsearbeidsgiver.refusjon
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import no.nav.helsearbeidsgiver.domene.inntektsmelding.v1.Refusjon
 import no.nav.helsearbeidsgiver.refusjonskrav.InntektsmeldingRefusjonskrav
+import no.nav.helsearbeidsgiver.utils.json.fromJson
+import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
@@ -154,5 +159,25 @@ class RefusjonUtfallMapperTest :
             shouldThrow<IllegalStateException> {
                 melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
             }
+        }
+
+        test("erRevurdering er false som standard og settes når det sendes inn") {
+            val melding = arbeidstakerVedtakMeldingMock(fnr, orgnr)
+
+            melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann").erRevurdering shouldBe false
+            melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann", erRevurdering = true)
+                .erRevurdering shouldBe true
+        }
+
+        test("erRevurdering serialiseres alltid, og mangler feltet i lagret JSON tolkes det som false") {
+            val utfall =
+                arbeidstakerVedtakMeldingMock(fnr, orgnr)
+                    .tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+            val json = utfall.toJson(RefusjonUtfall.serializer()).jsonObject
+
+            json["erRevurdering"] shouldBe JsonPrimitive(false)
+
+            val utenFelt = JsonObject(json - "erRevurdering")
+            utenFelt.fromJson(RefusjonUtfall.serializer()).erRevurdering shouldBe false
         }
     })

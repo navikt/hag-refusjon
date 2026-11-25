@@ -83,4 +83,32 @@ class RefusjonUtfallRepositoryTest :
                 repository.lagreJournalpostId(utfall.refusjonUtfallId, JOURNALPOST_ID)
             }
         }
+
+        test("finnesForAnnenBehandling er false når ingen utfall finnes for vedtaksperioden") {
+            repository.finnesForAnnenBehandling(melding.vedtaksperiodeId, melding.behandlingId) shouldBe false
+        }
+
+        test("finnesForAnnenBehandling ser bort fra utfall for samme behandling") {
+            repository.lagre(melding.behandlingId, utfall)
+
+            repository.finnesForAnnenBehandling(melding.vedtaksperiodeId, melding.behandlingId) shouldBe false
+        }
+
+        test("finnesForAnnenBehandling er true når en annen behandling har utfall for samme vedtaksperiode") {
+            repository.lagre(melding.behandlingId, utfall)
+
+            repository.finnesForAnnenBehandling(melding.vedtaksperiodeId, UUID.randomUUID().toKotlinUuid()) shouldBe true
+        }
+
+        test("finnesForAnnenBehandling ser bort fra utfall for andre vedtaksperioder") {
+            repository.lagre(melding.behandlingId, utfall)
+
+            repository.finnesForAnnenBehandling(UUID.randomUUID().toKotlinUuid(), UUID.randomUUID().toKotlinUuid()) shouldBe false
+        }
+
+        test("erRevurdering lagres og leses tilbake") {
+            repository.lagre(melding.behandlingId, utfall.copy(erRevurdering = true))
+
+            repository.hent(melding.behandlingId)?.erRevurdering shouldBe true
+        }
     })

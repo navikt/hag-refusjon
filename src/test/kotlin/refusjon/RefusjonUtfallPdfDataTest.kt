@@ -36,6 +36,8 @@ class RefusjonUtfallPdfDataTest :
             pdfData.daggrupper shouldBe refusjonUtfall.daggrupper
             pdfData.refusjonskrav shouldBe refusjonUtfall.refusjonskrav
             pdfData.beloepUtbetaltTilArbeidsgiver shouldBe refusjonUtfall.beloepUtbetaltTilArbeidsgiver
+            pdfData.erRevurdering shouldBe false
+            refusjonUtfall.copy(erRevurdering = true).tilRefusjonUtfallPdfData().erRevurdering shouldBe true
         }
 
         context("utbetalingen kan være lavere enn forventet når minst én daggruppe har differanse") {

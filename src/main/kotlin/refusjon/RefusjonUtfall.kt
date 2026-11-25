@@ -1,7 +1,10 @@
 @file:UseSerializers(LocalDateSerializer::class, LocalDateTimeSerializer::class)
+@file:OptIn(ExperimentalSerializationApi::class)
 
 package no.nav.helsearbeidsgiver.refusjon
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import no.nav.helsearbeidsgiver.utils.json.serializer.LocalDateSerializer
@@ -33,4 +36,7 @@ data class RefusjonUtfall(
     // Summen av beloepUtbetaltTilArbeidsgiver i daggruppene. Beregnet av Spleis, som begrenser til 6G og justerer for sykdomsgrad.
     val beloepUtbetaltTilArbeidsgiver: Int,
     val arbeidstakerVedtakMelding: ArbeidstakerVedtakMelding,
+    // True hvis det finnes et tidligere refusjonsutfall for samme vedtaksperiode. Default for utfall lagret før feltet fantes.
+    @EncodeDefault
+    val erRevurdering: Boolean = false,
 )

@@ -261,6 +261,7 @@ class VedtakServiceTest :
             val repository =
                 mockk<RefusjonUtfallRepository> {
                     every { hent(any()) } returnsMany listOf(null, eksisterende)
+                    every { finnesForAnnenBehandling(any(), any()) } returns false
                     every { lagre(any(), any()) } returns false
                     every { hentJournalpostId(any()) } returns null
                     every { lagreJournalpostId(any(), any()) } returns Unit
@@ -272,11 +273,46 @@ class VedtakServiceTest :
             bucketStorage.pdfer.keys shouldBe setOf(eksisterende.refusjonUtfallId)
         }
 
+        test("markerer ikke utfallet som revurdering for første behandling på vedtaksperioden") {
+            val repository = utfallRepositoryMock()
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            vedtakService(repository = repository).behandle(melding)
+
+            checkNotNull(repository.hent(melding.behandlingId)).erRevurdering shouldBe false
+        }
+
+        test("markerer utfallet som revurdering når det finnes et utfall for samme vedtaksperiode fra en annen behandling") {
+            val repository = utfallRepositoryMock()
+            val arkivService = arkivServiceMock()
+            val revurdering = melding.copy(behandlingId = Uuid.random())
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            vedtakService(arkivService = arkivService, repository = repository).behandle(melding)
+            vedtakService(arkivService = arkivService, repository = repository).behandle(revurdering)
+
+            checkNotNull(repository.hent(melding.behandlingId)).erRevurdering shouldBe false
+            checkNotNull(repository.hent(revurdering.behandlingId)).erRevurdering shouldBe true
+            coVerify(exactly = 1) { arkivService.arkiver(match { it.erRevurdering }, any()) }
+        }
+
+        test("markerer ikke utfallet som revurdering når tidligere utfall gjelder en annen vedtaksperiode") {
+            val repository = utfallRepositoryMock()
+            val annenPeriode = melding.copy(behandlingId = Uuid.random(), vedtaksperiodeId = Uuid.random())
+            mockPdfgen(HttpStatusCode.OK, pdfBytes)
+
+            vedtakService(repository = repository).behandle(melding)
+            vedtakService(repository = repository).behandle(annenPeriode)
+
+            checkNotNull(repository.hent(annenPeriode.behandlingId)).erRevurdering shouldBe false
+        }
+
         test("feiler når lagring av utfall feiler") {
             val bucketStorage = FakeBucketStorage()
             val repository =
                 mockk<RefusjonUtfallRepository> {
                     every { hent(any()) } returns null
+                    every { finnesForAnnenBehandling(any(), any()) } returns false
                     every { lagre(any(), any()) } throws RuntimeException("db nede")
                 }
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
