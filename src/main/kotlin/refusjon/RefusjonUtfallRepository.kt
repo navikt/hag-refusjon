@@ -1,6 +1,8 @@
 package no.nav.helsearbeidsgiver.refusjon
 
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -21,6 +23,23 @@ open class RefusjonUtfallRepository(
                 .where { RefusjonUtfallEntitet.behandlingId eq behandlingId }
                 .singleOrNull()
                 ?.get(RefusjonUtfallEntitet.utfall)
+        }
+
+    open fun finnesForAnnenBehandling(
+        vedtaksperiodeId: Uuid,
+        behandlingId: Uuid,
+    ): Boolean =
+        transaction(db) {
+            maxAttempts = 1
+            queryTimeout = 10
+
+            RefusjonUtfallEntitet
+                .selectAll()
+                .where {
+                    (RefusjonUtfallEntitet.vedtaksperiodeId eq vedtaksperiodeId) and
+                        (RefusjonUtfallEntitet.behandlingId neq behandlingId)
+                }.limit(1)
+                .any()
         }
 
     open fun lagre(

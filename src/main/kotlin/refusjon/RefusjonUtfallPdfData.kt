@@ -27,6 +27,7 @@ data class RefusjonUtfallPdfData(
     val beloepUtbetaltTilArbeidsgiver: Int,
     val utbetalingKanVaereLavereEnnForventet: Boolean,
     val arbeidstakervedtakFattetTidspunkt: LocalDateTime,
+    val erRevurdering: Boolean,
 )
 
 fun RefusjonUtfall.tilRefusjonUtfallPdfData(): RefusjonUtfallPdfData =
@@ -44,4 +45,5 @@ fun RefusjonUtfall.tilRefusjonUtfallPdfData(): RefusjonUtfallPdfData =
         utbetalingKanVaereLavereEnnForventet =
             daggrupper.any { it.sykepengeStatus == SykepengeStatus.RETT_TIL_SYKEPENGER_DIFFERANSE } || refusjonskrav == null,
         arbeidstakervedtakFattetTidspunkt = arbeidstakervedtakFattetTidspunkt,
+        erRevurdering = erRevurdering,
     )

@@ -147,8 +147,24 @@ class VedtakService(
                 )
             }
 
+        val erRevurdering =
+            try {
+                refusjonUtfallRepository.finnesForAnnenBehandling(melding.vedtaksperiodeId, melding.behandlingId)
+            } catch (e: Exception) {
+                throw loggOgKast(
+                    "Feil ved oppslag av tidligere refusjonsutfall for behandlingId ${melding.behandlingId} og vedtaksperiodeId ${melding.vedtaksperiodeId}.",
+                    e,
+                )
+            }
+        if (erRevurdering) {
+            sikkerLogger.info(
+                "Fant tidligere refusjonsutfall for vedtaksperiodeId ${melding.vedtaksperiodeId}. " +
+                    "Markerer refusjonsutfall for behandlingId ${melding.behandlingId} som revurdering.",
+            )
+        }
+
         val refusjonUtfall =
-            melding.tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), refusjonskrav, arbeidsgiverNavn, sykmeldtNavn)
+            melding.tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), refusjonskrav, arbeidsgiverNavn, sykmeldtNavn, erRevurdering)
 
         try {
             val lagret = refusjonUtfallRepository.lagre(melding.behandlingId, refusjonUtfall)

@@ -3,8 +3,13 @@ package no.nav.helsearbeidsgiver.refusjon
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import no.nav.helsearbeidsgiver.domene.inntektsmelding.v1.Refusjon
 import no.nav.helsearbeidsgiver.refusjonskrav.InntektsmeldingRefusjonskrav
+import no.nav.helsearbeidsgiver.utils.json.fromJson
+import no.nav.helsearbeidsgiver.utils.json.toJson
 import no.nav.helsearbeidsgiver.utils.test.wrapper.genererGyldig
 import no.nav.helsearbeidsgiver.utils.wrapper.Fnr
 import no.nav.helsearbeidsgiver.utils.wrapper.Orgnr
@@ -28,7 +33,7 @@ class RefusjonUtfallMapperTest :
         test("mapper toppnivåfelter fra vedtaket") {
             val melding = arbeidstakerVedtakMeldingMock(fnr, orgnr)
 
-            melding.tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann") shouldBe
+            melding.tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann", false) shouldBe
                 RefusjonUtfall(
                     refusjonUtfallId = refusjonUtfallId,
                     vedtaksperiodeId = melding.vedtaksperiodeId,
@@ -65,7 +70,7 @@ class RefusjonUtfallMapperTest :
                         ),
                 )
 
-            val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+            val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Arbeidsgiver AS", "Ola Nordmann", false)
 
             refusjonUtfall.beloepUtbetaltTilArbeidsgiver shouldBe 2000
             refusjonUtfall.daggrupper shouldBe
@@ -97,7 +102,7 @@ class RefusjonUtfallMapperTest :
                     InntektsmeldingRefusjonskrav(annenImId, Refusjon(beloepPerMaaned = 13000.0, endringer = emptyList())),
                 )
 
-            val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, refusjonskrav, "Arbeidsgiver AS", "Ola Nordmann")
+            val refusjonUtfall = melding.tilRefusjonUtfall(refusjonUtfallId, refusjonskrav, "Arbeidsgiver AS", "Ola Nordmann", false)
 
             refusjonUtfall.refusjonskrav shouldBe
                 Refusjonskrav(
@@ -116,7 +121,7 @@ class RefusjonUtfallMapperTest :
             val refusjonskrav = listOf(InntektsmeldingRefusjonskrav(imId, Refusjon(beloepPerMaaned = 26000.0, endringer = emptyList())))
 
             melding
-                .tilRefusjonUtfall(refusjonUtfallId, refusjonskrav, "Arbeidsgiver AS", "Ola Nordmann")
+                .tilRefusjonUtfall(refusjonUtfallId, refusjonskrav, "Arbeidsgiver AS", "Ola Nordmann", false)
                 .daggrupper
                 .single()
                 .sykepengeStatus shouldBe SykepengeStatus.RETT_TIL_SYKEPENGER
@@ -144,7 +149,7 @@ class RefusjonUtfallMapperTest :
                     dokumenter = emptyList(),
                 )
             shouldThrow<NoSuchElementException> {
-                melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+                melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann", false)
             }
         }
 
@@ -152,7 +157,27 @@ class RefusjonUtfallMapperTest :
             val melding = arbeidstakerVedtakMeldingMock(fnr, orgnr).copy(anvendtSeksG = null)
 
             shouldThrow<IllegalStateException> {
-                melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann")
+                melding.tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann", false)
             }
+        }
+
+        listOf(true, false).forEach { erRevurdering ->
+            test("mapper erRevurdering = $erRevurdering") {
+                arbeidstakerVedtakMeldingMock(fnr, orgnr)
+                    .tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann", erRevurdering)
+                    .erRevurdering shouldBe erRevurdering
+            }
+        }
+
+        test("erRevurdering serialiseres alltid, og mangler feltet i lagret JSON tolkes det som false") {
+            val utfall =
+                arbeidstakerVedtakMeldingMock(fnr, orgnr)
+                    .tilRefusjonUtfall(Uuid.random(), emptyList(), "Arbeidsgiver AS", "Ola Nordmann", false)
+            val json = utfall.toJson(RefusjonUtfall.serializer()).jsonObject
+
+            json["erRevurdering"] shouldBe JsonPrimitive(false)
+
+            val utenFelt = JsonObject(json - "erRevurdering")
+            utenFelt.fromJson(RefusjonUtfall.serializer()).erRevurdering shouldBe false
         }
     })

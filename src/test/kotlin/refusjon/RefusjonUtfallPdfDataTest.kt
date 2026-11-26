@@ -27,6 +27,7 @@ class RefusjonUtfallPdfDataTest :
                         refusjonskrav = emptyList(),
                         arbeidsgiverNavn = "Billys Bollefabrikk AS",
                         sykmeldtNavn = "Ola Nordmann",
+                        erRevurdering = false,
                     )
 
             val pdfData = refusjonUtfall.tilRefusjonUtfallPdfData()
@@ -36,6 +37,8 @@ class RefusjonUtfallPdfDataTest :
             pdfData.daggrupper shouldBe refusjonUtfall.daggrupper
             pdfData.refusjonskrav shouldBe refusjonUtfall.refusjonskrav
             pdfData.beloepUtbetaltTilArbeidsgiver shouldBe refusjonUtfall.beloepUtbetaltTilArbeidsgiver
+            pdfData.erRevurdering shouldBe false
+            refusjonUtfall.copy(erRevurdering = true).tilRefusjonUtfallPdfData().erRevurdering shouldBe true
         }
 
         context("utbetalingen kan være lavere enn forventet når minst én daggruppe har differanse") {
@@ -47,7 +50,7 @@ class RefusjonUtfallPdfDataTest :
             ) { (statuser, forventet) ->
                 val refusjonUtfall =
                     arbeidstakerVedtakMeldingMock(Fnr.genererGyldig(), Orgnr.genererGyldig())
-                        .tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann")
+                        .tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann", false)
                         .copy(
                             refusjonskrav = Refusjonskrav(beloepPerMaaned = 30000.0, endringer = emptyList()),
                             daggrupper =
@@ -69,7 +72,7 @@ class RefusjonUtfallPdfDataTest :
         test("utbetalingKanVaereLavereEnnForventet er true om refusjonsutfallet har ingen refusjonskrav (ingen inntektsmelding brukt)") {
             val refusjonUtfall =
                 arbeidstakerVedtakMeldingMock(Fnr.genererGyldig(), Orgnr.genererGyldig())
-                    .tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann")
+                    .tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann", false)
                     .copy(daggrupper = emptyList())
 
             refusjonUtfall.refusjonskrav shouldBe null

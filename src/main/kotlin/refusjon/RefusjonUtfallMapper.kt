@@ -11,6 +11,7 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
     refusjonskrav: List<InntektsmeldingRefusjonskrav>,
     arbeidsgiverNavn: String,
     sykmeldtNavn: String,
+    erRevurdering: Boolean,
 ): RefusjonUtfall {
     val refusjonskravPerInntektsmelding = refusjonskrav.associate { it.inntektsmeldingId to it.refusjonskrav }
     val anvendtSeksG = checkNotNull(anvendtSeksG) { "anvendtSeksG mangler, skulle vært fanget av valideringen" }
@@ -33,5 +34,6 @@ fun ArbeidstakerVedtakMelding.tilRefusjonUtfall(
         refusjonskrav = utbetalingsdager.tilRefusjonskrav(refusjonskravPerInntektsmelding),
         beloepUtbetaltTilArbeidsgiver = daggrupper.sumOf { it.beloepUtbetaltTilArbeidsgiver },
         arbeidstakerVedtakMelding = this,
+        erRevurdering = erRevurdering,
     )
 }
