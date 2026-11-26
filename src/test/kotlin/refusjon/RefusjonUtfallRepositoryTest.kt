@@ -19,7 +19,7 @@ class RefusjonUtfallRepositoryTest :
         var databaseConfig: DatabaseConfig? = null
         lateinit var repository: RefusjonUtfallRepository
         val melding = gyldigMelding(FNR, ORGNR).parseJson().fromJson(ArbeidstakerVedtakMelding.serializer())
-        val utfall = melding.tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), ARBEIDSGIVER_NAVN, SYKMELDT_NAVN)
+        val utfall = melding.tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), ARBEIDSGIVER_NAVN, SYKMELDT_NAVN, false)
 
         fun db() = checkNotNull(databaseConfig).database
 

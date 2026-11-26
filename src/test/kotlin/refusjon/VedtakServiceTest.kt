@@ -257,7 +257,7 @@ class VedtakServiceTest :
         test("bruker utfallet som allerede er lagret hvis et annet kall rakk å lagre først") {
             // skal vanligvis ikke skje, men teoretisk mulig at to podder kjører samtidig under deploy
             val bucketStorage = FakeBucketStorage()
-            val eksisterende = melding.tilRefusjonUtfall(Uuid.random(), emptyList(), ARBEIDSGIVER_NAVN, SYKMELDT_NAVN)
+            val eksisterende = melding.tilRefusjonUtfall(Uuid.random(), emptyList(), ARBEIDSGIVER_NAVN, SYKMELDT_NAVN, false)
             val repository =
                 mockk<RefusjonUtfallRepository> {
                     every { hent(any()) } returnsMany listOf(null, eksisterende)
@@ -298,13 +298,15 @@ class VedtakServiceTest :
 
         test("markerer ikke utfallet som revurdering når tidligere utfall gjelder en annen vedtaksperiode") {
             val repository = utfallRepositoryMock()
+            val arkivService = arkivServiceMock()
             val annenPeriode = melding.copy(behandlingId = Uuid.random(), vedtaksperiodeId = Uuid.random())
             mockPdfgen(HttpStatusCode.OK, pdfBytes)
 
-            vedtakService(repository = repository).behandle(melding)
-            vedtakService(repository = repository).behandle(annenPeriode)
+            vedtakService(arkivService = arkivService, repository = repository).behandle(melding)
+            vedtakService(arkivService = arkivService, repository = repository).behandle(annenPeriode)
 
             checkNotNull(repository.hent(annenPeriode.behandlingId)).erRevurdering shouldBe false
+            coVerify(exactly = 0) { arkivService.arkiver(match { it.erRevurdering }, any()) }
         }
 
         test("feiler når lagring av utfall feiler") {

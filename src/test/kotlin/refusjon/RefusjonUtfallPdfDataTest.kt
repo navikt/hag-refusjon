@@ -27,6 +27,7 @@ class RefusjonUtfallPdfDataTest :
                         refusjonskrav = emptyList(),
                         arbeidsgiverNavn = "Billys Bollefabrikk AS",
                         sykmeldtNavn = "Ola Nordmann",
+                        erRevurdering = false,
                     )
 
             val pdfData = refusjonUtfall.tilRefusjonUtfallPdfData()
@@ -49,7 +50,7 @@ class RefusjonUtfallPdfDataTest :
             ) { (statuser, forventet) ->
                 val refusjonUtfall =
                     arbeidstakerVedtakMeldingMock(Fnr.genererGyldig(), Orgnr.genererGyldig())
-                        .tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann")
+                        .tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann", false)
                         .copy(
                             refusjonskrav = Refusjonskrav(beloepPerMaaned = 30000.0, endringer = emptyList()),
                             daggrupper =
@@ -71,7 +72,7 @@ class RefusjonUtfallPdfDataTest :
         test("utbetalingKanVaereLavereEnnForventet er true om refusjonsutfallet har ingen refusjonskrav (ingen inntektsmelding brukt)") {
             val refusjonUtfall =
                 arbeidstakerVedtakMeldingMock(Fnr.genererGyldig(), Orgnr.genererGyldig())
-                    .tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann")
+                    .tilRefusjonUtfall(UUID.randomUUID().toKotlinUuid(), emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann", false)
                     .copy(daggrupper = emptyList())
 
             refusjonUtfall.refusjonskrav shouldBe null

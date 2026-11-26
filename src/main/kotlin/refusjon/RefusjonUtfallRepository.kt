@@ -33,12 +33,13 @@ open class RefusjonUtfallRepository(
             maxAttempts = 1
             queryTimeout = 10
 
-            !RefusjonUtfallEntitet
+            RefusjonUtfallEntitet
                 .selectAll()
                 .where {
                     (RefusjonUtfallEntitet.vedtaksperiodeId eq vedtaksperiodeId) and
                         (RefusjonUtfallEntitet.behandlingId neq behandlingId)
-                }.empty()
+                }.limit(1)
+                .any()
         }
 
     open fun lagre(

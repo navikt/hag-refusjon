@@ -59,7 +59,7 @@ class ArkivServiceTest :
                 ArkivService(dokArkivClient).arkiver(
                     refusjonUtfall =
                         arbeidstakerVedtakMeldingMock(fnr, orgnr)
-                            .tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann"),
+                            .tilRefusjonUtfall(refusjonUtfallId, emptyList(), "Billys Bollefabrikk AS", "Ola Nordmann", false),
                     pdf = pdf,
                 )
 
