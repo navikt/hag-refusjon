@@ -12,6 +12,14 @@ object ArbeidstakerVedtakEntitet : Table("arbeidstaker_vedtak") {
     val orgnr = text("orgnr")
     val melding = jsonb("melding", jsonConfig, ArbeidstakerVedtakMelding.serializer())
     val opprettet = timestampWithTimeZone("opprettet")
+    val sekvensnummer = long("sekvensnummer")
+    val status = enumerationByName<ArbeidstakerVedtakStatus>("status", 20)
 
     override val primaryKey = PrimaryKey(behandlingId)
+}
+
+enum class ArbeidstakerVedtakStatus {
+    MOTTATT,
+    BEHANDLET,
+    STOPPET,
 }
