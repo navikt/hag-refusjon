@@ -1,5 +1,6 @@
 package no.nav.helsearbeidsgiver.refusjon
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -131,6 +132,47 @@ class ArbeidstakerVedtakRepositoryTest :
                     result.next()
                     result.getString(1).contains("ekstraFelt") shouldBe false
                 }
+            }
+        }
+
+        test("nytt vedtak er MOTTATT og venter på eldre vedtak på samme vedtaksperiode") {
+            val foersteVedtak = nyBehandling()
+            val andreVedtak = nyBehandling()
+
+            repository.lagre(foersteVedtak)
+            repository.lagre(andreVedtak)
+
+            repository.hentStatusForEldreUbehandlede(foersteVedtak.behandlingId) shouldBe emptyList()
+            repository.hentStatusForEldreUbehandlede(andreVedtak.behandlingId) shouldBe listOf(ArbeidstakerVedtakStatus.MOTTATT)
+        }
+
+        test("hentStatusForEldreUbehandlede returnerer bare eldre, ubehandlede vedtak på samme vedtaksperiode") {
+            val eldsteBehandlet = nyBehandling()
+            val eldreStoppet = nyBehandling()
+            val eldreMottatt = nyBehandling()
+            val annenVedtaksperiode = nyBehandling().copy(vedtaksperiodeId = UUID.randomUUID().toKotlinUuid())
+            val gjeldende = nyBehandling()
+            val nyere = nyBehandling()
+
+            listOf(eldsteBehandlet, eldreStoppet, eldreMottatt, annenVedtaksperiode, gjeldende, nyere).forEach { repository.lagre(it) }
+            repository.oppdaterStatus(eldsteBehandlet.behandlingId, ArbeidstakerVedtakStatus.BEHANDLET)
+            repository.oppdaterStatus(eldreStoppet.behandlingId, ArbeidstakerVedtakStatus.STOPPET)
+
+            repository.hentStatusForEldreUbehandlede(gjeldende.behandlingId) shouldBe
+                listOf(ArbeidstakerVedtakStatus.STOPPET, ArbeidstakerVedtakStatus.MOTTATT)
+            repository.hentStatusForEldreUbehandlede(eldsteBehandlet.behandlingId) shouldBe emptyList()
+            repository.hentStatusForEldreUbehandlede(annenVedtaksperiode.behandlingId) shouldBe emptyList()
+        }
+
+        test("hentStatusForEldreUbehandlede feiler når vedtaket ikke finnes") {
+            shouldThrow<IllegalStateException> {
+                repository.hentStatusForEldreUbehandlede(UUID.randomUUID().toKotlinUuid())
+            }
+        }
+
+        test("oppdaterStatus feiler når vedtaket ikke finnes") {
+            shouldThrow<IllegalStateException> {
+                repository.oppdaterStatus(UUID.randomUUID().toKotlinUuid(), ArbeidstakerVedtakStatus.BEHANDLET)
             }
         }
     })

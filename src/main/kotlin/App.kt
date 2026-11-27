@@ -125,6 +125,8 @@ fun main() {
                 unleashFeatureToggles = unleashFeatureToggles,
             )
 
+        val arbeidstakerVedtakRepository = ArbeidstakerVedtakRepository(database.database)
+
         val bakgrunnsjobInterval = if (isDev()) 5.seconds else 60.seconds
         val bakgrunnsjobbService =
             BakgrunnsjobbService(
@@ -132,10 +134,8 @@ fun main() {
                 leaderConfig = NaisLeaderConfig,
                 interval = bakgrunnsjobInterval,
             )
-        bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb(vedtakService))
+        bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb(vedtakService, arbeidstakerVedtakRepository))
         bakgrunnsjobbService.startAsync(retryOnFail = true)
-
-        val arbeidstakerVedtakRepository = ArbeidstakerVedtakRepository(database.database)
 
         val sisConsumer =
             SisConsumer(

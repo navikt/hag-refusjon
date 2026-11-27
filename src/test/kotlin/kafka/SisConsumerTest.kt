@@ -99,7 +99,7 @@ class SisConsumerTest :
 
         fun feilendeBakgrunnsjobbService(): BakgrunnsjobbService {
             val service = BakgrunnsjobbService(spyk(ExposedBakgrunnsjobRepository(db())))
-            service.registrer(ArbeidstakerVedtakJobb(mockk<VedtakService>()))
+            service.registrer(ArbeidstakerVedtakJobb(mockk<VedtakService>(), repository))
             every { service.bakgrunnsjobbRepository.save(any()) } throws IllegalStateException("Kunne ikke lagre bakgrunnsjobb")
             return service
         }
@@ -120,7 +120,7 @@ class SisConsumerTest :
             databaseConfig = DatabaseConfig(postgres.jdbcUrl, postgres.username, postgres.password)
             repository = ArbeidstakerVedtakRepository(db())
             bakgrunnsjobbService = BakgrunnsjobbService(ExposedBakgrunnsjobRepository(db()))
-            bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb(mockk<VedtakService>()))
+            bakgrunnsjobbService.registrer(ArbeidstakerVedtakJobb(mockk<VedtakService>(), repository))
         }
 
         beforeTest {
